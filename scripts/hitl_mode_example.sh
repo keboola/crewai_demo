@@ -2,7 +2,7 @@
 # HITL mode content generation example
 
 # Configuration
-API_URL="https://flask-550.hub.canary-orion.keboola.dev"
+API_URL="http://localhost:8888"
 TOPIC="Climate Change"
 USE_WEBHOOK=false
 WEBHOOK_URL="http://localhost:8889/webhook"

@@ -2,7 +2,7 @@
 # Script to check the status of multiple jobs
 
 # Configuration
-API_URL="https://flask-550.hub.canary-orion.keboola.dev"
+API_URL="http://localhost:8888"
 
 # Colors for output
 GREEN='\033[0;32m'

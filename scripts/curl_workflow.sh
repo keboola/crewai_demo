@@ -3,7 +3,7 @@
 # This script demonstrates a complete workflow using curl
 
 # Configuration
-API_URL="https://flask-550.hub.canary-orion.keboola.dev"
+API_URL="http://localhost:8888"
 TOPIC="Renewable Energy"
 REQUIRE_APPROVAL=true
 USE_WEBHOOK=false

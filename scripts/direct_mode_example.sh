@@ -2,7 +2,7 @@
 # Direct mode content generation example
 
 # Configuration
-API_URL="https://flask-550.hub.canary-orion.keboola.dev"
+API_URL="http://localhost:8888"
 TOPIC="Artificial Intelligence"
 
 echo "CrewAI Content Orchestrator - Direct Mode Example"
