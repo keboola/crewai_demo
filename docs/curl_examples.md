@@ -1,6 +1,8 @@
 # CrewAI Content Orchestrator API - curl Examples
 
-This document provides examples of how to interact with the CrewAI Content Orchestrator API using curl commands.
+> [!NOTE]
+> This document provides examples of how to interact with the CrewAI Content Orchestrator API using curl commands.
+> Replace `YOUR_API_ENDPOINT` in all examples with your actual API endpoint (e.g., `http://localhost:8888` or your deployed API URL).
 
 ## Table of Contents
 - [Health Check](#health-check)
@@ -11,22 +13,25 @@ This document provides examples of how to interact with the CrewAI Content Orche
 - [Approve Content](#approve-content)
 - [List Jobs](#list-jobs)
 - [List Available Crews](#list-available-crews)
+- [Delete a Job](#delete-a-job)
+- [Example Workflow](#example-workflow)
 
 ## Health Check
 
 Check if the API is running:
 
 ```bash
-curl https://flask-550.hub.canary-orion.keboola.dev/health
+curl YOUR_API_ENDPOINT/health
 ```
 
 ## Direct Content Generation
 
-Generate content directly without human approval:
+<details>
+<summary>Generate content directly without human approval</summary>
 
 ```bash
 # Asynchronous (non-blocking)
-curl -X POST https://flask-550.hub.canary-orion.keboola.dev/kickoff \
+curl -X POST YOUR_API_ENDPOINT/kickoff \
   -H "Content-Type: application/json" \
   -d '{
     "crew": "ContentCreationCrew",
@@ -35,27 +40,21 @@ curl -X POST https://flask-550.hub.canary-orion.keboola.dev/kickoff \
       "require_approval": false
     }
   }'
-
-# Synchronous (wait for result)
-curl -X POST https://flask-550.hub.canary-orion.keboola.dev/kickoff \
-  -H "Content-Type: application/json" \
-  -d '{
-    "crew": "ContentCreationCrew",
-    "inputs": {
-      "topic": "Artificial Intelligence",
-      "require_approval": false
-    },
-    "wait": true
-  }'
 ```
+
+> [!WARNING]
+> The `wait=true` parameter is not currently functional. All jobs are processed asynchronously regardless of this setting.
+
+</details>
 
 ## HITL Content Generation
 
-Generate content with Human-in-the-Loop workflow:
+<details>
+<summary>Generate content with Human-in-the-Loop workflow</summary>
 
 ```bash
 # Without webhook
-curl -X POST https://flask-550.hub.canary-orion.keboola.dev/kickoff \
+curl -X POST YOUR_API_ENDPOINT/kickoff \
   -H "Content-Type: application/json" \
   -d '{
     "crew": "ContentCreationCrew",
@@ -66,7 +65,7 @@ curl -X POST https://flask-550.hub.canary-orion.keboola.dev/kickoff \
   }'
 
 # With webhook for notifications
-curl -X POST https://flask-550.hub.canary-orion.keboola.dev/kickoff \
+curl -X POST YOUR_API_ENDPOINT/kickoff \
   -H "Content-Type: application/json" \
   -d '{
     "crew": "ContentCreationCrew",
@@ -74,67 +73,74 @@ curl -X POST https://flask-550.hub.canary-orion.keboola.dev/kickoff \
       "topic": "Climate Change",
       "require_approval": true
     },
-    "webhook_url": "http://localhost:8889/webhook"
+    "webhook_url": "http://your-webhook-endpoint.com/webhook"
   }'
 ```
+</details>
 
 ## Check Job Status
 
 Check the status of a specific job:
 
 ```bash
-curl https://flask-550.hub.canary-orion.keboola.dev/job/YOUR_JOB_ID
+curl YOUR_API_ENDPOINT/job/YOUR_JOB_ID
 ```
 
 Replace `YOUR_JOB_ID` with the actual job ID returned from the kickoff request.
 
 ## Provide Feedback
 
-Provide feedback for a job that's pending approval:
+<details>
+<summary>Provide feedback for a job that's pending approval</summary>
 
 ```bash
-curl -X POST https://flask-550.hub.canary-orion.keboola.dev/job/YOUR_JOB_ID/feedback \
+curl -X POST YOUR_API_ENDPOINT/job/YOUR_JOB_ID/feedback \
   -H "Content-Type: application/json" \
   -d '{
     "feedback": "Please make the content more concise and add more examples about renewable energy.",
     "approved": false
   }'
 ```
+</details>
 
 ## Approve Content
 
-Approve content for a job that's pending approval:
+<details>
+<summary>Approve content for a job that's pending approval</summary>
 
 ```bash
-curl -X POST https://flask-550.hub.canary-orion.keboola.dev/job/YOUR_JOB_ID/feedback \
+curl -X POST YOUR_API_ENDPOINT/job/YOUR_JOB_ID/feedback \
   -H "Content-Type: application/json" \
   -d '{
     "feedback": "Content approved as is.",
     "approved": true
   }'
 ```
+</details>
 
 ## List Jobs
 
-List all jobs (with optional filtering):
+<details>
+<summary>List all jobs (with optional filtering)</summary>
 
 ```bash
 # List all jobs (limited to 10)
-curl https://flask-550.hub.canary-orion.keboola.dev/jobs
+curl YOUR_API_ENDPOINT/jobs
 
 # List jobs with a specific status
-curl https://flask-550.hub.canary-orion.keboola.dev/jobs?status=completed
+curl YOUR_API_ENDPOINT/jobs?status=completed
 
 # List more jobs
-curl https://flask-550.hub.canary-orion.keboola.dev/jobs?limit=20
+curl YOUR_API_ENDPOINT/jobs?limit=20
 ```
+</details>
 
 ## List Available Crews
 
 List all available crews in the system:
 
 ```bash
-curl https://flask-550.hub.canary-orion.keboola.dev/list-crews
+curl YOUR_API_ENDPOINT/list-crews
 ```
 
 ## Delete a Job
@@ -142,16 +148,17 @@ curl https://flask-550.hub.canary-orion.keboola.dev/list-crews
 Delete a specific job:
 
 ```bash
-curl -X DELETE https://flask-550.hub.canary-orion.keboola.dev/job/YOUR_JOB_ID
+curl -X DELETE YOUR_API_ENDPOINT/job/YOUR_JOB_ID
 ```
 
 ## Example Workflow
 
-Here's a complete example workflow using curl:
+<details>
+<summary>Complete example workflow using curl</summary>
 
 1. Start a HITL job:
 ```bash
-curl -X POST https://flask-550.hub.canary-orion.keboola.dev/kickoff \
+curl -X POST YOUR_API_ENDPOINT/kickoff \
   -H "Content-Type: application/json" \
   -d '{
     "crew": "ContentCreationCrew",
@@ -169,12 +176,12 @@ export JOB_ID="job_id_from_response"
 
 3. Check job status until it's pending approval:
 ```bash
-curl https://flask-550.hub.canary-orion.keboola.dev/job/$JOB_ID | jq
+curl YOUR_API_ENDPOINT/job/$JOB_ID | jq
 ```
 
 4. Provide feedback:
 ```bash
-curl -X POST https://flask-550.hub.canary-orion.keboola.dev/job/$JOB_ID/feedback \
+curl -X POST YOUR_API_ENDPOINT/job/$JOB_ID/feedback \
   -H "Content-Type: application/json" \
   -d '{
     "feedback": "Please add more examples about solar power.",
@@ -184,7 +191,9 @@ curl -X POST https://flask-550.hub.canary-orion.keboola.dev/job/$JOB_ID/feedback
 
 5. Check job status again until it's completed:
 ```bash
-curl https://flask-550.hub.canary-orion.keboola.dev/job/$JOB_ID | jq
+curl YOUR_API_ENDPOINT/job/$JOB_ID | jq
 ```
 
-Note: The `jq` command is used to format the JSON response. If you don't have it installed, you can omit it. 
+> [!TIP]
+> The `jq` command is used to format the JSON response. If you don't have it installed, you can omit it.
+</details> 

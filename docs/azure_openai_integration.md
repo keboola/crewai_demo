@@ -1,10 +1,18 @@
 # Azure OpenAI Integration
 
-This document explains how to use Azure OpenAI with the CrewAI Content Orchestrator.
+> [!NOTE]
+> This document explains how to use Azure OpenAI with the CrewAI Content Orchestrator.
+
+## Table of Contents
+- [Overview](#overview)
+- [Configuration](#configuration)
+- [Implementation Details](#implementation-details)
+- [API Key Compatibility](#api-key-compatibility)
+- [Troubleshooting](#troubleshooting)
 
 ## Overview
 
-The CrewAI Content Orchestrator now supports both OpenRouter and Azure OpenAI as LLM providers. This gives you flexibility in choosing your preferred provider based on your needs.
+The CrewAI Content Orchestrator supports both OpenRouter and Azure OpenAI as LLM providers. This gives you flexibility in choosing your preferred provider based on your needs.
 
 ## Configuration
 
@@ -12,35 +20,27 @@ To use Azure OpenAI, you need to set the following environment variables:
 
 1. `LLM_PROVIDER=azure` - This tells the system to use Azure OpenAI instead of OpenRouter
 2. `AZURE_OPENAI_API_KEY` - Your Azure OpenAI API key
-3. `AZURE_OPENAI_ENDPOINT` - Your Azure OpenAI endpoint URL (e.g., "<https://your-resource-name.openai.azure.com/>")
+3. `AZURE_OPENAI_ENDPOINT` - Your Azure OpenAI endpoint URL (e.g., "https://your-resource-name.openai.azure.com/")
 4. `AZURE_OPENAI_API_VERSION` - (Optional) The API version to use (defaults to "2023-05-15")
 5. `AZURE_OPENAI_DEPLOYMENT_ID` - (Optional) The deployment ID to use (defaults to "gpt-35-turbo-0125")
 
-You can set these variables in your `.streamlit/secrets.toml` file:
-
-```toml
-LLM_PROVIDER = "azure"
-AZURE_OPENAI_API_KEY = "your-api-key"
-AZURE_OPENAI_ENDPOINT = "https://your-resource-name.openai.azure.com/"
-AZURE_OPENAI_API_VERSION = "2023-05-15"  # Optional
-AZURE_OPENAI_DEPLOYMENT_ID = "gpt-35-turbo-0125"  # Optional
-```
-
-Or in your `.env` file:
+You can set these variables in your `.env` file:
 
 ```bash
 LLM_PROVIDER=azure
-AZURE_OPENAI_API_KEY=your-api-key
+AZURE_OPENAI_API_KEY=your-azure-api-key
 AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
 AZURE_OPENAI_API_VERSION=2023-05-15  # Optional
 AZURE_OPENAI_DEPLOYMENT_ID=gpt-35-turbo-0125  # Optional
 ```
 
+A sample configuration file is provided in `.env.azure.sample`.
+
 ## Implementation Details
 
 The system uses the `AzureChatOpenAI` class from `langchain_openai` when `LLM_PROVIDER` is set to `azure`. This class is specifically designed to work with Azure OpenAI deployments and handles the authentication and API calls differently from the standard OpenAI integration.
 
-Here's how the implementation works in the `_get_llm` method of the `orchestrator.py` file:
+Here's how the implementation works in the `crewai_app/orchestrator.py` file:
 
 ```python
 if llm_provider == "azure":
@@ -53,20 +53,54 @@ if llm_provider == "azure":
     if not api_key or not azure_endpoint:
         raise ValueError("AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT must be set for Azure OpenAI")
     
-    logger.info(f"Using Azure OpenAI with deployment_id: {deployment_id}")
-    
-    # Import the dedicated Azure class
-    from langchain_openai import AzureChatOpenAI
-    
-    # For Azure OpenAI, we use the dedicated AzureChatOpenAI class
     return AzureChatOpenAI(
         azure_deployment=deployment_id,
-        api_key=api_key,
-        api_version=api_version,
+        openai_api_version=api_version,
         azure_endpoint=azure_endpoint,
+        api_key=api_key,
         temperature=0.7,
     )
 ```
+
+## API Key Compatibility
+
+When using OpenRouter, only the `OPENAI_API_KEY` needs to be set. This is for compatibility with libraries like LiteLLM that expect this environment variable.
+
+When using Azure OpenAI, you need to set the `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` variables.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Authentication Error**
+   - Make sure your `AZURE_OPENAI_API_KEY` is correct
+   - Check that your `AZURE_OPENAI_ENDPOINT` is properly formatted (should end with `.openai.azure.com/`)
+
+2. **Model Not Found**
+   - Verify that the `AZURE_OPENAI_DEPLOYMENT_ID` matches a deployment in your Azure OpenAI resource
+   - Check the Azure OpenAI Studio to see available deployments
+
+3. **API Version Error**
+   - If you get API version errors, try updating the `AZURE_OPENAI_API_VERSION` to a more recent version
+   - Azure OpenAI API versions change periodically
+
+### Testing Azure OpenAI
+
+You can test your Azure OpenAI configuration with the following curl command:
+
+```bash
+curl -X POST "https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-id/chat/completions?api-version=2023-05-15" \
+  -H "Content-Type: application/json" \
+  -H "api-key: your-azure-api-key" \
+  -d '{
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Hello, world!"}
+    ]
+  }'
+```
+
+Replace the placeholders with your actual values.
 
 ## Deployment IDs
 
@@ -128,20 +162,5 @@ When using OpenRouter, you only need to set the `OPENAI_API_KEY` environment var
 # Use OPENAI_API_KEY directly for compatibility with all libraries
 api_key = os.environ.get("OPENAI_API_KEY")
 ```
-
-## Troubleshooting
-
-If you encounter issues with the Azure OpenAI integration, check the following:
-
-1. Verify that your API key and endpoint are correct
-2. Ensure that the deployment ID you're using exists in your Azure OpenAI resource
-3. Check the logs for any error messages
-4. Verify that you have the correct permissions to access the Azure OpenAI resource
-
-### OpenRouter Integration
-
-If you encounter an error like `Completions.create() got an unexpected keyword argument 'headers'` when using OpenRouter, make sure you're using the latest version of the code. We've updated the integration to use `default_headers` instead of `model_kwargs.headers` to fix compatibility issues with the latest OpenAI SDK.
-
-If you see an error like `'openrouter/openai/gpt-4o-mini is not a valid model ID'`, make sure you're using the correct model ID format. OpenRouter model IDs should be in the format `provider/model-name` (e.g., `openai/gpt-4o-mini`), not `openrouter/provider/model-name`.
 
 For more information about Azure OpenAI, refer to the [official documentation](https://learn.microsoft.com/en-us/fabric/data-science/ai-services/how-to-use-openai-sdk-synapse?tabs=python0).
