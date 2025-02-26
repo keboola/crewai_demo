@@ -11,7 +11,6 @@
 - [Getting Started](#getting-started)
 - [Documentation](#documentation)
 - [LLM Provider Support](#llm-provider-support)
-- [Testing](#testing)
 - [License](#license)
 
 ## Overview
@@ -32,32 +31,43 @@ This project demonstrates how to build AI agent workflows using the CrewAI frame
 crewai_demo/                  # Root project directory
 │
 ├── crewai_app/               # CrewAI application
-│   ├── orchestrator.py       # Main orchestrator for CrewAI using @CrewBase pattern
-│   └── tests/                # Tests for CrewAI app
+│   ├── __init__.py           # Package initialization
+│   └── orchestrator.py       # Main orchestrator for CrewAI using @CrewBase pattern
 │
 ├── api_wrapper/              # API wrapper service
+│   ├── __init__.py           # Package initialization
 │   ├── api_wrapper.py        # Main API service
-│   ├── api_client.py         # Client for the API
-│   └── tests/                # Tests for API service
+│   └── api_client.py         # Client for the API
 │
 ├── docs/                     # Documentation
+│   ├── api_wrapper_documentation.md
+│   ├── azure_openai_integration.md
+│   ├── HITL_WORKFLOW.md
+│   ├── HITL_IMPLEMENTATION.md
+│   └── curl_examples.md
 │
 ├── scripts/                  # Utility scripts
+│   ├── run_api.sh            # Script to run the API service
+│   ├── check_jobs.sh         # Script to check job status
+│   ├── curl_workflow.sh      # Example curl commands for workflows
+│   ├── direct_mode_example.sh # Example for direct mode
+│   ├── hitl_mode_example.sh  # Example for HITL mode
+│   └── webhook_receiver.py   # Simple webhook receiver for testing
 │
-├── .env.sample              # Environment variable templates
-├── .env.azure.sample
+├── .env.sample              # Environment variable template
+├── .env.azure.sample        # Azure-specific environment template
 └── requirements.txt         # Project dependencies
 ```
+
 </details>
 
 ## Components
 
 ### CrewAI Application
 
-The `crewai_app` directory contains the core CrewAI application, which is responsible for content generation using AI agents. The main components are:
+The `crewai_app` directory contains the core CrewAI application, which is responsible for content generation using AI agents. The main component is:
 
 - `orchestrator.py`: The main orchestrator that defines the CrewAI crew, agents, and tasks using the `@CrewBase` decorator pattern. All CrewAI functionality is consolidated in this file.
-- `tests/`: Tests for the CrewAI application, including integration tests for different LLM providers.
 
 ### API Wrapper
 
@@ -65,7 +75,6 @@ The `api_wrapper` directory contains the API service that wraps the CrewAI appli
 
 - `api_wrapper.py`: The main FastAPI application that provides endpoints for interacting with the CrewAI application.
 - `api_client.py`: A client for the API that can be used to interact with the API programmatically.
-- `tests/`: Tests for the API service.
 
 ### Documentation
 
@@ -75,10 +84,18 @@ The project includes comprehensive documentation in the `docs/` directory:
 - [Azure OpenAI Integration](docs/azure_openai_integration.md) - Using Azure OpenAI with the application
 - [HITL Workflow](docs/HITL_WORKFLOW.md) - Human-in-the-Loop workflow guide
 - [HITL Implementation](docs/HITL_IMPLEMENTATION.md) - Implementation details for HITL
+- [cURL Examples](docs/curl_examples.md) - Example API requests using curl
 
 ### Scripts
 
-The `scripts` directory contains utility scripts for working with the application, such as webhook receivers, curl examples, and job checking scripts.
+The `scripts` directory contains utility scripts for working with the application:
+
+- `run_api.sh` - Script to start the API server
+- `check_jobs.sh` - Script to check the status of jobs
+- `curl_workflow.sh` - Example workflow using curl commands
+- `direct_mode_example.sh` - Example of using direct mode
+- `hitl_mode_example.sh` - Example of using HITL mode
+- `webhook_receiver.py` - Simple webhook receiver for testing notifications
 
 ## Getting Started
 
@@ -86,23 +103,27 @@ The `scripts` directory contains utility scripts for working with the applicatio
 <summary>Click to expand setup instructions</summary>
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/yourusername/crewai_demo.git
    cd crewai_demo
    ```
 
 2. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 3. **Configure environment variables**
+
    ```bash
    cp .env.sample .env
    # Edit .env with your API keys and configuration
    ```
 
 4. **Run the API wrapper**
+
    ```bash
    bash scripts/run_api.sh
    # Or directly with uvicorn:
@@ -110,6 +131,7 @@ The `scripts` directory contains utility scripts for working with the applicatio
    ```
 
 5. **Make a test request**
+
    ```bash
    curl -X POST http://localhost:8888/kickoff \
      -H "Content-Type: application/json" \
@@ -120,6 +142,9 @@ The `scripts` directory contains utility scripts for working with the applicatio
        }
      }'
    ```
+
+   For more examples, see the scripts in the `scripts/` directory or the [cURL Examples](docs/curl_examples.md) documentation.
+
 </details>
 
 ## LLM Provider Support
@@ -152,28 +177,10 @@ AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_VERSION=2023-05-15
 AZURE_OPENAI_DEPLOYMENT_ID=gpt-35-turbo-0125
 ```
+
 </details>
 
 See the [Azure OpenAI Integration](docs/azure_openai_integration.md) documentation for more details.
-
-## Testing
-
-<details>
-<summary>Click to see testing instructions</summary>
-
-To test the CrewAI application with different LLM providers:
-
-```bash
-# Test Azure OpenAI
-python -m crewai_app.tests.test_azure_openai
-
-# Test OpenRouter
-python -m crewai_app.tests.test_openrouter
-
-# Test CrewAI integration
-python -m crewai_app.tests.test_crewai_integration
-```
-</details>
 
 ## License
 
