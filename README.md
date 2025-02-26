@@ -1,10 +1,32 @@
 # CrewAI Demo
 
-This repository contains a demo of using CrewAI for content generation with human-in-the-loop capabilities, along with an API wrapper to serve the CrewAI application.
+> [!NOTE]
+> This repository contains a demo of using CrewAI for content generation with human-in-the-loop capabilities, along with an API wrapper to serve the CrewAI application.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Project Structure](#project-structure)
+- [Components](#components)
+- [Getting Started](#getting-started)
+- [Documentation](#documentation)
+- [LLM Provider Support](#llm-provider-support)
+- [Testing](#testing)
+- [License](#license)
+
+## Overview
+
+This project demonstrates how to build AI agent workflows using the CrewAI framework and expose them as a RESTful API. Key features include:
+
+- **Human-in-the-Loop (HITL)** approval processes
+- **Asynchronous execution** of AI agent workflows
+- **Webhook notifications** for job status updates
+- **Support for multiple LLM providers** (OpenRouter, Azure OpenAI)
 
 ## Project Structure
 
-The project is organized into the following components:
+<details>
+<summary>Click to see the project structure</summary>
 
 ```
 crewai_demo/                  # Root project directory
@@ -26,6 +48,7 @@ crewai_demo/                  # Root project directory
 ├── .env.azure.sample
 └── requirements.txt         # Project dependencies
 ```
+</details>
 
 ## Components
 
@@ -44,13 +67,14 @@ The `api_wrapper` directory contains the API service that wraps the CrewAI appli
 - `api_client.py`: A client for the API that can be used to interact with the API programmatically.
 - `tests/`: Tests for the API service.
 
-### Shared Resources
-
-The `shared` directory contains resources that are used by both the CrewAI application and the API wrapper.
-
 ### Documentation
 
-The project includes comprehensive documentation in the `docs/` directory.
+The project includes comprehensive documentation in the `docs/` directory:
+
+- [API Wrapper Documentation](docs/api_wrapper_documentation.md) - How to use the API wrapper
+- [Azure OpenAI Integration](docs/azure_openai_integration.md) - Using Azure OpenAI with the application
+- [HITL Workflow](docs/HITL_WORKFLOW.md) - Human-in-the-Loop workflow guide
+- [HITL Implementation](docs/HITL_IMPLEMENTATION.md) - Implementation details for HITL
 
 ### Scripts
 
@@ -58,31 +82,84 @@ The `scripts` directory contains utility scripts for working with the applicatio
 
 ## Getting Started
 
-1. Clone the repository
-2. Install dependencies: `pip install -r requirements.txt`
-3. Copy `.env.sample` to `.env` and fill in your API keys
-4. Run the API wrapper: `bash scripts/run_api.sh` or `uvicorn api_wrapper.api_wrapper:app --reload`
-5. Use the API client or curl to interact with the API
+<details>
+<summary>Click to expand setup instructions</summary>
 
-## Documentation
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/crewai_demo.git
+   cd crewai_demo
+   ```
 
-For more detailed documentation, see the files in the `docs/` directory:
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-- [Azure OpenAI Integration](docs/azure_openai_integration.md)
-- [API Wrapper Documentation](docs/api_wrapper_documentation.md)
-- [HITL Workflow](docs/HITL_WORKFLOW.md)
-- [HITL Implementation](docs/HITL_IMPLEMENTATION.md)
+3. **Configure environment variables**
+   ```bash
+   cp .env.sample .env
+   # Edit .env with your API keys and configuration
+   ```
+
+4. **Run the API wrapper**
+   ```bash
+   bash scripts/run_api.sh
+   # Or directly with uvicorn:
+   # uvicorn api_wrapper.api_wrapper:app --host 0.0.0.0 --port 8888 --reload
+   ```
+
+5. **Make a test request**
+   ```bash
+   curl -X POST http://localhost:8888/kickoff \
+     -H "Content-Type: application/json" \
+     -d '{
+       "crew": "ContentCreationCrew",
+       "inputs": {
+         "topic": "Artificial Intelligence"
+       }
+     }'
+   ```
+</details>
 
 ## LLM Provider Support
 
-The application supports multiple LLM providers:
+> [!IMPORTANT]
+> The application supports multiple LLM providers. Make sure to configure the appropriate environment variables.
 
-- **OpenRouter**: Default provider, configured via `OPENAI_API_KEY` and `OPENROUTER_MODEL`
-- **Azure OpenAI**: Configured via `LLM_PROVIDER=azure`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, etc.
+<details>
+<summary>OpenRouter Configuration (Default)</summary>
 
-See the Azure OpenAI integration documentation for more details.
+```bash
+# In .env file
+LLM_PROVIDER=openrouter
+OPENAI_API_KEY=your_api_key_here
+OPENAI_API_BASE=https://openrouter.ai/api/v1
+OPENROUTER_MODEL=openai/gpt-4o-mini
+```
+
+Note: OpenRouter uses the `OPENAI_API_KEY` environment variable for authentication.
+</details>
+
+<details>
+<summary>Azure OpenAI Configuration</summary>
+
+```bash
+# In .env file
+LLM_PROVIDER=azure
+AZURE_OPENAI_API_KEY=your_azure_api_key_here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2023-05-15
+AZURE_OPENAI_DEPLOYMENT_ID=gpt-35-turbo-0125
+```
+</details>
+
+See the [Azure OpenAI Integration](docs/azure_openai_integration.md) documentation for more details.
 
 ## Testing
+
+<details>
+<summary>Click to see testing instructions</summary>
 
 To test the CrewAI application with different LLM providers:
 
@@ -96,6 +173,7 @@ python -m crewai_app.tests.test_openrouter
 # Test CrewAI integration
 python -m crewai_app.tests.test_crewai_integration
 ```
+</details>
 
 ## License
 
