@@ -5,14 +5,13 @@ from langchain_openai import ChatOpenAI
 import os
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
 
 @CrewBase
 class ContentCreationCrew:
@@ -181,17 +180,53 @@ class ContentCreationCrew:
 
     def _get_llm(self):
         """Helper method to create a consistent LLM configuration"""
-        return ChatOpenAI(
-            model="openrouter/openai/gpt-4o-mini",
-            openai_api_key=os.environ["OPENROUTER_API_KEY"],
-            base_url="https://openrouter.ai/api/v1",
-            model_kwargs={
-                "headers": {
+        # Determine which LLM provider to use
+        llm_provider = os.environ.get("LLM_PROVIDER", "openrouter").lower()
+        
+        if llm_provider == "azure":
+            # Azure OpenAI configuration
+            api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+            azure_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+            api_version = os.environ.get("AZURE_OPENAI_API_VERSION", "2023-05-15")
+            deployment_id = os.environ.get("AZURE_OPENAI_DEPLOYMENT_ID", "gpt-35-turbo-0125")
+            
+            if not api_key or not azure_endpoint:
+                raise ValueError("AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT must be set for Azure OpenAI")
+            
+            logger.info(f"Using Azure OpenAI with deployment_id: {deployment_id}")
+            
+            # Import the dedicated Azure class
+            from langchain_openai import AzureChatOpenAI
+            
+            # For Azure OpenAI, we use the dedicated AzureChatOpenAI class
+            return AzureChatOpenAI(
+                azure_deployment=deployment_id,
+                api_key=api_key,
+                api_version=api_version,
+                azure_endpoint=azure_endpoint,
+                temperature=0.7,
+            )
+        else:
+            # Default to OpenRouter
+            api_key = os.environ.get("OPENAI_API_KEY")
+            base_url = os.environ.get("OPENAI_API_BASE", "https://openrouter.ai/api/v1")
+            model = os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+            
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY must be set for OpenRouter")
+            
+            logger.info(f"Using OpenRouter with model: {model}")
+            
+            return ChatOpenAI(
+                model=model,
+                api_key=api_key,
+                base_url=base_url,
+                temperature=0.7,
+                default_headers={
                     "HTTP-Referer": "https://github.com/crewai",
                     "X-Title": "CrewAI Demo",
                 }
-            },
-        )
+            )
 
 
 # API-compatible functions
@@ -234,16 +269,16 @@ def create_content_with_hitl(
             logger.info(f"Using content_crew method, type: {type(crew_method)}")
 
         # Get the crew object
-        logger.info(f"Calling crew method to get crew object")
+        logger.info("Calling crew method to get crew object")
         crew = crew_method()
         if crew is None:
-            raise ValueError(f"Crew method returned None instead of a Crew object")
+            raise ValueError("Crew method returned None instead of a Crew object")
 
         logger.info(f"Got crew object of type: {type(crew).__name__}")
         logger.info(f"Crew object attributes: {dir(crew)}")
 
         # Call kickoff on the crew object
-        logger.info(f"Calling kickoff with inputs already in crew instance")
+        logger.info("Calling kickoff with inputs already in crew instance")
         result = crew.kickoff()
         logger.info(f"Kickoff result type: {type(result).__name__}")
         logger.info(f"Kickoff result: {result}")
@@ -254,7 +289,7 @@ def create_content_with_hitl(
             logger.info("Result has 'raw' attribute")
             content = str(result.raw)
         else:
-            logger.info(f"Result does not have 'raw' attribute, using str() conversion")
+            logger.info("Result does not have 'raw' attribute, using str() conversion")
             content = str(result)
 
         logger.info(f"Content length: {len(content)}")
