@@ -4,13 +4,11 @@ import logging
 import os
 import sys
 import uuid
-import threading
-import json
 import requests
-from typing import Dict, Any, Optional
+from typing import Optional
 
 import tomli
-from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -69,7 +67,7 @@ if not script_path:
 if not os.path.exists(script_path):
     logger.error(f"Script file not found: {script_path}")
     logger.error(
-        f"Please make sure the file exists and DATA_APP_ENTRYPOINT is set correctly"
+        "Please make sure the file exists and DATA_APP_ENTRYPOINT is set correctly"
     )
     sys.exit(1)
 
@@ -107,7 +105,8 @@ def process_job_in_background(
         crew_class = getattr(user_module, crew_name)
         crew_instance = crew_class(inputs=inputs)
         logger.info(
-            f"Created crew instance of type: {type(crew_instance).__name__} with inputs: {inputs}"
+            f"Created crew instance of type: {type(crew_instance).__name__} "
+            f"with inputs: {inputs}"
         )
 
         # For CrewBase classes, we need to find a method that returns a Crew object
@@ -190,11 +189,13 @@ def process_job_in_background(
                                 timeout=10,
                             )
                             logger.info(
-                                f"Webhook notification sent for job {job_id} pending approval"
+                                f"Webhook notification sent for job {job_id} "
+                                "pending approval"
                             )
                         except Exception as webhook_error:
                             logger.error(
-                                f"Failed to send webhook notification for job {job_id}: {str(webhook_error)}"
+                                f"Failed to send webhook notification for job "
+                                f"{job_id}: {str(webhook_error)}"
                             )
                 else:
                     # Update job with success result
@@ -227,13 +228,15 @@ def process_job_in_background(
                             logger.info(f"Webhook notification sent for job {job_id}")
                         except Exception as webhook_error:
                             logger.error(
-                                f"Failed to send webhook notification for job {job_id}: {str(webhook_error)}"
+                                f"Failed to send webhook notification for job "
+                                f"{job_id}: {str(webhook_error)}"
                             )
 
                 return
             else:
                 raise ValueError(
-                    f"No crew methods found in {crew_name} and no create_content_with_hitl function available"
+                    f"No crew methods found in {crew_name} and "
+                    "no create_content_with_hitl function available"
                 )
 
         # Choose the appropriate crew method based on inputs
@@ -249,7 +252,7 @@ def process_job_in_background(
         logger.info(f"Crew method type: {type(crew_method).__name__}")
 
         # First call the crew method to get the Crew object
-        logger.info(f"Calling crew method to get crew object")
+        logger.info("Calling crew method to get crew object")
         crew_object = crew_method()
 
         if crew_object is None:
@@ -260,7 +263,7 @@ def process_job_in_background(
         logger.info(f"Crew object type: {type(crew_object).__name__}")
 
         # Now call kickoff on the crew object
-        logger.info(f"Calling kickoff with inputs already in crew instance")
+        logger.info("Calling kickoff with inputs already in crew instance")
         result = crew_object.kickoff()
         logger.info(f"Kickoff result type: {type(result).__name__}")
 
@@ -313,7 +316,8 @@ def process_job_in_background(
                     )
                 except Exception as webhook_error:
                     logger.error(
-                        f"Failed to send webhook notification for job {job_id}: {str(webhook_error)}"
+                        f"Failed to send webhook notification for job "
+                        f"{job_id}: {str(webhook_error)}"
                     )
         else:
             # Update job with success result
@@ -346,7 +350,8 @@ def process_job_in_background(
                     logger.info(f"Webhook notification sent for job {job_id}")
                 except Exception as webhook_error:
                     logger.error(
-                        f"Failed to send webhook notification for job {job_id}: {str(webhook_error)}"
+                        f"Failed to send webhook notification for job "
+                        f"{job_id}: {str(webhook_error)}"
                     )
 
     except Exception as e:
@@ -382,7 +387,8 @@ def process_job_in_background(
                 logger.info(f"Error webhook notification sent for job {job_id}")
             except Exception as webhook_error:
                 logger.error(
-                    f"Failed to send error webhook notification for job {job_id}: {str(webhook_error)}"
+                    f"Failed to send error webhook notification for job "
+                    f"{job_id}: {str(webhook_error)}"
                 )
 
 
@@ -500,7 +506,8 @@ async def kickoff_crew(request: Request, background_tasks: BackgroundTasks):
                 crew_class = getattr(user_module, crew_name)
                 crew_instance = crew_class(inputs=inputs)
                 logger.info(
-                    f"Created crew instance of type: {type(crew_instance).__name__} with inputs: {inputs}"
+                    f"Created crew instance of type: {type(crew_instance).__name__} "
+                    f"with inputs: {inputs}"
                 )
 
                 # For CrewBase classes, we need to find a method that returns a Crew object
@@ -549,12 +556,13 @@ async def kickoff_crew(request: Request, background_tasks: BackgroundTasks):
                 logger.info(f"Crew method type: {type(crew_method).__name__}")
 
                 # First call the crew method to get the Crew object
-                logger.info(f"Calling crew method to get crew object")
+                logger.info("Calling crew method to get crew object")
                 crew_object = crew_method()
 
                 if crew_object is None:
                     raise ValueError(
-                        f"Crew method {crew_method_name} returned None instead of a Crew object"
+                        f"Crew method {crew_method_name} returned None "
+                        "instead of a Crew object"
                     )
 
                 logger.info(f"Crew object type: {type(crew_object).__name__}")
@@ -646,7 +654,10 @@ async def provide_feedback(
         return JSONResponse(
             status_code=400,
             content={
-                "error": f"Job {job_id} is not in a state that can accept feedback. Current status: {jobs[job_id].get('status')}"
+                "error": (
+                    f"Job {job_id} is not in a state that can accept feedback. "
+                    f"Current status: {jobs[job_id].get('status')}"
+                )
             },
         )
 
@@ -687,7 +698,8 @@ async def provide_feedback(
                     logger.info(f"Approval webhook notification sent for job {job_id}")
                 except Exception as webhook_error:
                     logger.error(
-                        f"Failed to send approval webhook notification for job {job_id}: {str(webhook_error)}"
+                        f"Failed to send approval webhook notification for job "
+                        f"{job_id}: {str(webhook_error)}"
                     )
 
             return {
@@ -718,7 +730,9 @@ async def provide_feedback(
             )
 
             return {
-                "message": "Feedback recorded and content generation restarted with feedback",
+                "message": (
+                    "Feedback recorded and content generation restarted with feedback"
+                ),
                 "job_id": job_id,
             }
 
@@ -794,47 +808,59 @@ async def list_crews():
                 # Check if this is a CrewBase class by looking for the is_crew_class attribute
                 # or by checking if the class name contains "CrewBase"
                 is_crew_base = False
-                
+
                 # Check if it's a wrapped CrewBase class
-                if hasattr(class_obj, "is_crew_class") and getattr(class_obj, "is_crew_class", False):
+                if hasattr(class_obj, "is_crew_class") and getattr(
+                    class_obj, "is_crew_class", False
+                ):
                     is_crew_base = True
                 # Or check if it's named like a CrewBase class
                 elif "CrewBase" in class_obj.__name__:
                     is_crew_base = True
-                
+
                 if is_crew_base:
                     # Try to create an instance to inspect its methods
                     try:
                         instance = class_obj()
-                        
+
                         # Look for methods that return a Crew object
                         for method_name in dir(instance):
-                            if not method_name.startswith("_") and callable(getattr(instance, method_name)):
+                            if not method_name.startswith("_") and callable(
+                                getattr(instance, method_name)
+                            ):
                                 method = getattr(instance, method_name)
-                                
+
                                 # Check if this method returns a Crew based on annotations
                                 is_crew_method = False
-                                
+
                                 # Check if it has the return type annotation for Crew
                                 if (
-                                    hasattr(method, "__annotations__") 
+                                    hasattr(method, "__annotations__")
                                     and "return" in method.__annotations__
                                     and method.__annotations__["return"] is not None
-                                    and hasattr(method.__annotations__["return"], "__name__")
-                                    and method.__annotations__["return"].__name__ == "Crew"
+                                    and hasattr(
+                                        method.__annotations__["return"], "__name__"
+                                    )
+                                    and method.__annotations__["return"].__name__
+                                    == "Crew"
                                 ):
                                     is_crew_method = True
-                                
+
                                 # Or check if it's wrapped by the @crew decorator
-                                elif hasattr(method, "__closure__") and method.__closure__ is not None:
+                                elif (
+                                    hasattr(method, "__closure__")
+                                    and method.__closure__ is not None
+                                ):
                                     # The @crew decorator wraps the original function
                                     is_crew_method = True
-                                
+
                                 if is_crew_method and method_name not in crews:
                                     crews.append(method_name)
                                     logger.info(f"Found crew method: {method_name}")
                     except Exception as e:
-                        logger.warning(f"Could not inspect methods of {class_name}: {str(e)}")
+                        logger.warning(
+                            f"Could not inspect methods of {class_name}: {str(e)}"
+                        )
 
         return {"crews": crews}
     except Exception as e:
