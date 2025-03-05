@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
 
 # Set a longer timeout for the app to handle long-running operations
 app = FastAPI(
@@ -46,6 +47,10 @@ logger = logging.getLogger(__name__)
 # In-memory storage for jobs
 jobs = {}
 
+# Load environment variables from .env file
+load_dotenv()
+logger.info("Loaded environment variables from .env file")
+
 # Load secrets from .streamlit/secrets.toml
 try:
     with open(".streamlit/secrets.toml", "rb") as f:
@@ -70,6 +75,25 @@ if not os.path.exists(script_path):
         "Please make sure the file exists and DATA_APP_ENTRYPOINT is set correctly"
     )
     sys.exit(1)
+
+# Add the src directory to the Python path if it exists
+script_dir = os.path.dirname(script_path)
+parent_dir = os.path.dirname(script_dir)
+
+# Add both the script directory and its parent to the Python path
+# This helps with imports in various project structures
+logger.info(f"Adding script directory to Python path: {script_dir}")
+sys.path.insert(0, script_dir)
+
+# If there's a src directory, add it too
+src_dir = os.path.join(parent_dir, "src")
+if os.path.exists(src_dir):
+    logger.info(f"Adding src directory to Python path: {src_dir}")
+    sys.path.insert(0, src_dir)
+
+# Also add the parent directory to handle imports like 'from project_name import x'
+logger.info(f"Adding parent directory to Python path: {parent_dir}")
+sys.path.insert(0, parent_dir)
 
 try:
     spec = importlib.util.spec_from_file_location("user_script", script_path)
@@ -101,13 +125,59 @@ def process_job_in_background(
         require_approval = inputs.pop("require_approval", True)
         logger.info(f"Require approval: {require_approval}")
 
-        # Get the crew instance from the user module
+        # Check for required environment variables based on crew type
+        if crew_name == "ConvoNewsletterCrew":
+            required_env_vars = ["ANTHROPIC_API_KEY", "EXA_API_KEY"]
+            optional_env_vars = ["MODEL"]
+            
+            missing_vars = []
+            for var in required_env_vars:
+                if not os.getenv(var):
+                    logger.warning(f"Required environment variable {var} is not set for {crew_name}")
+                    missing_vars.append(var)
+            
+            for var in optional_env_vars:
+                if not os.getenv(var):
+                    logger.info(f"Optional environment variable {var} is not set for {crew_name}, will use default")
+            
+            if missing_vars:
+                logger.error(f"Missing required environment variables for {crew_name}: {', '.join(missing_vars)}")
+                raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+        else:
+            # Generic check for other crew types
+            common_env_vars = ["OPENAI_API_KEY", "AZURE_OPENAI_API_KEY", "ANTHROPIC_API_KEY"]
+            missing_vars = []
+            for var in common_env_vars:
+                if not os.getenv(var):
+                    logger.warning(f"Environment variable {var} is not set")
+                    missing_vars.append(var)
+            
+            if missing_vars:
+                logger.warning(f"Missing environment variables: {', '.join(missing_vars)}")
+                logger.warning("Some crew implementations may require these variables")
+
+        # Get the crew class from the user module
         crew_class = getattr(user_module, crew_name)
-        crew_instance = crew_class(inputs=inputs)
-        logger.info(
-            f"Created crew instance of type: {type(crew_instance).__name__} "
-            f"with inputs: {inputs}"
-        )
+        
+        # Determine if the crew class is a CrewBase class
+        is_crew_base = hasattr(crew_class, '__crewbase__')
+        logger.info(f"Crew class {crew_name} is CrewBase: {is_crew_base}")
+        
+        # Initialize the crew instance based on its type
+        try:
+            # First try initializing with inputs
+            crew_instance = crew_class(inputs=inputs)
+            logger.info(f"Created crew instance with inputs parameter")
+        except TypeError:
+            try:
+                # If that fails, try without inputs parameter
+                crew_instance = crew_class()
+                logger.info(f"Created crew instance without inputs parameter")
+            except Exception as e:
+                logger.error(f"Failed to create crew instance: {e}")
+                raise
+        
+        logger.info(f"Created crew instance of type: {type(crew_instance).__name__}")
 
         # For CrewBase classes, we need to find a method that returns a Crew object
         # These are typically decorated with @crew
@@ -263,8 +333,20 @@ def process_job_in_background(
         logger.info(f"Crew object type: {type(crew_object).__name__}")
 
         # Now call kickoff on the crew object
-        logger.info("Calling kickoff with inputs already in crew instance")
-        result = crew_object.kickoff()
+        # Try different approaches to kickoff based on what the crew supports
+        try:
+            # First try with inputs parameter
+            logger.info("Attempting to call kickoff with inputs parameter")
+            result = crew_object.kickoff(inputs=inputs)
+        except TypeError as e:
+            if "unexpected keyword argument 'inputs'" in str(e):
+                # If that fails with the specific error about inputs, try without inputs
+                logger.info("Calling kickoff without inputs parameter")
+                result = crew_object.kickoff()
+            else:
+                # If it's a different TypeError, re-raise
+                raise
+            
         logger.info(f"Kickoff result type: {type(result).__name__}")
 
         # Convert result to a dictionary if it's a TaskOutput object
@@ -427,6 +509,28 @@ async def kickoff_crew(request: Request, background_tasks: BackgroundTasks):
         require_approval = inputs.get(
             "require_approval", True
         )  # Get require_approval from inputs
+        
+        # Get environment variables from request if provided
+        env_vars = data.get("env_vars", {})
+        
+        # Special handling for ConvoNewsletterCrew
+        if crew_name == "ConvoNewsletterCrew":
+            # Check for required environment variables
+            if "ANTHROPIC_API_KEY" not in env_vars and not os.getenv("ANTHROPIC_API_KEY"):
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "ANTHROPIC_API_KEY is required for ConvoNewsletterCrew"},
+                )
+                
+            # Check for EXA_API_KEY
+            if "EXA_API_KEY" not in env_vars and not os.getenv("EXA_API_KEY"):
+                logger.warning("EXA_API_KEY is not provided for ConvoNewsletterCrew, some functionality may not work")
+        
+        # Set environment variables from request
+        for key, value in env_vars.items():
+            if isinstance(value, str):
+                logger.info(f"Setting environment variable from request: {key}")
+                os.environ[key] = value
 
         logger.info(f"Kickoff request for crew {crew_name} with inputs: {inputs}")
         logger.info(
@@ -504,11 +608,26 @@ async def kickoff_crew(request: Request, background_tasks: BackgroundTasks):
 
                 # Otherwise, use the crew approach
                 crew_class = getattr(user_module, crew_name)
-                crew_instance = crew_class(inputs=inputs)
-                logger.info(
-                    f"Created crew instance of type: {type(crew_instance).__name__} "
-                    f"with inputs: {inputs}"
-                )
+                
+                # Determine if the crew class is a CrewBase class
+                is_crew_base = hasattr(crew_class, '__crewbase__')
+                logger.info(f"Crew class {crew_name} is CrewBase: {is_crew_base}")
+                
+                # Initialize the crew instance based on its type
+                try:
+                    # First try initializing with inputs
+                    crew_instance = crew_class(inputs=inputs)
+                    logger.info(f"Created crew instance with inputs parameter")
+                except TypeError:
+                    try:
+                        # If that fails, try without inputs parameter
+                        crew_instance = crew_class()
+                        logger.info(f"Created crew instance without inputs parameter")
+                    except Exception as e:
+                        logger.error(f"Failed to create crew instance: {e}")
+                        raise
+                
+                logger.info(f"Created crew instance of type: {type(crew_instance).__name__}")
 
                 # For CrewBase classes, we need to find a method that returns a Crew object
                 # These are typically decorated with @crew
@@ -568,7 +687,20 @@ async def kickoff_crew(request: Request, background_tasks: BackgroundTasks):
                 logger.info(f"Crew object type: {type(crew_object).__name__}")
 
                 # Now call kickoff on the crew object
-                result = crew_object.kickoff()
+                # Try different approaches to kickoff based on what the crew supports
+                try:
+                    # First try with inputs parameter
+                    logger.info("Attempting to call kickoff with inputs parameter")
+                    result = crew_object.kickoff(inputs=inputs)
+                except TypeError as e:
+                    if "unexpected keyword argument 'inputs'" in str(e):
+                        # If that fails with the specific error about inputs, try without inputs
+                        logger.info("Calling kickoff without inputs parameter")
+                        result = crew_object.kickoff()
+                    else:
+                        # If it's a different TypeError, re-raise
+                        raise
+                
                 logger.info(f"Kickoff result type: {type(result).__name__}")
 
                 # Convert result to a dictionary if it's a TaskOutput object

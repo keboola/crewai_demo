@@ -48,3 +48,5 @@ frontend/yarn-error.log
 .streamlit/
 
 .ruff_cache/
+
+convo_newsletter_crew/
