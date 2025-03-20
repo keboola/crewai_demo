@@ -6,6 +6,7 @@
 ## Table of Contents
 
 - [Overview](#overview)
+- [Current Implementation Status](#current-implementation-status)
 - [Quick Start](#quick-start)
 - [Authentication](#authentication)
 - [API Endpoints](#api-endpoints)
@@ -33,7 +34,116 @@ Key features:
 - **Code Management**: Upload code directly or integrate with GitHub repositories
 - **Environment Management**: Configure environment variables for your agents
 - **Scalability**: Control resource allocation and replica count
-- **Operations**: Start, stop, and monitor your deployed agents
+- **Operations**: Restart and monitor your deployed agents
+
+## Current Implementation Status
+
+> [!IMPORTANT]
+> This documentation represents the current implementation of the Management API. Below is a summary of the implemented features.
+
+### Implemented Features
+
+✅ **Core API Structure**
+
+- FastAPI application framework
+- Pydantic v2 models for request/response validation
+- Kubernetes service layer
+- Token-based authentication with `API_AUTH_TOKEN`
+
+✅ **Runtime Management Endpoints**
+
+- Create runtime with Git repository source
+- List all runtimes
+- Get runtime details
+- Delete runtime
+- Restart runtime
+- File upload deployment via `/api/runtimes/from-file`
+
+✅ **Environment Variable Support**
+
+- Environment variables in runtime creation
+- Support for both plain and secure variables
+- Namespace configuration via query params or request body
+
+✅ **Code Source Management**
+
+- Git repository integration
+- File upload support
+- Code source configuration
+
+### Authentication
+
+The Management API uses token-based authentication. All requests must include an Authorization header with a Bearer token:
+
+```bash
+curl -X GET "http://localhost:8080/api/runtimes" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+```
+
+### Configuration
+
+The API token is configured through the environment variable `API_AUTH_TOKEN`. You can:
+
+1. Set it directly in your environment:
+
+   ```bash
+   export API_AUTH_TOKEN="your-auth-token-here"
+   ```
+
+2. Include it in your .env file:
+
+   ```bash
+   API_AUTH_TOKEN=your-auth-token-here
+   ```
+
+3. Pass it as an environment variable when running containers:
+
+   ```bash
+   docker run -e API_AUTH_TOKEN=your-auth-token-here ...
+   ```
+
+Authentication can be disabled by setting `API_AUTH_ENABLED=false` in your environment.
+
+### Examples
+
+**Creating a runtime with authentication:**
+
+```bash
+# First set your token
+export API_AUTH_TOKEN="your-auth-token-here"
+
+# Then use it in your API requests
+curl -X POST "http://localhost:8080/api/runtimes" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -d '{
+    "name": "content-agent",
+    "description": "Content generation agent",
+    "entrypoint": "crewai_app/main.py",
+    "codeSource": {
+      "type": "git",
+      "gitRepo": {
+        "url": "https://github.com/username/content-agent",
+        "branch": "main"
+      }
+    },
+    "envVars": [
+      {
+        "name": "OPENAI_API_KEY",
+        "value": "sk-..."
+      }
+    ]
+  }'
+```
+
+**File upload with authentication:**
+
+```bash
+curl -X POST "http://localhost:8080/api/runtimes/from-file" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -F "runtime_config=@runtime_config.json" \
+  -F "file=@agent_code.zip"
+```
 
 ## Quick Start
 
@@ -44,7 +154,7 @@ Key features:
 
    ```bash
    # Get your API key from the platform dashboard
-   export AI_PLATFORM_API_KEY="your-api-key"
+   export API_AUTH_TOKEN="your-auth-token-here"
    ```
 
 2. **Deploy your first agent**:
@@ -52,7 +162,7 @@ Key features:
    ```bash
    curl -X POST https://api.ai-agent-platform.example.com/api/runtimes \
      -H "Content-Type: application/json" \
-     -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}" \
+     -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
      -d '{
        "name": "my-first-agent",
        "description": "My first CrewAI agent",
@@ -77,45 +187,83 @@ Key features:
 
    ```bash
    curl -X GET https://api.ai-agent-platform.example.com/api/runtimes/my-first-agent \
-     -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
+     -H "Authorization: Bearer ${API_AUTH_TOKEN}"
    ```
 
 </details>
 
 ## Authentication
 
-The Management API uses JWT-based authentication. All requests must include an Authorization header with a valid Bearer token.
+The Management API uses token-based authentication. All requests must include an Authorization header with a Bearer token:
 
 ```bash
-curl -X GET https://api.ai-agent-platform.example.com/api/runtimes \
-  -H "Authorization: Bearer your-token-here"
+curl -X GET "http://localhost:8080/api/runtimes" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
 ```
 
-### Runtime API Authentication
+### Configuration
 
-For accessing Runtime APIs, you'll need to request a separate token from the Management API using the token management endpoints. This allows direct communication with Runtime APIs without routing through the Management API.
+The API token is configured through the environment variable `API_AUTH_TOKEN`. You can:
+
+1. Set it directly in your environment:
+
+   ```bash
+   export API_AUTH_TOKEN="your-auth-token-here"
+   ```
+
+2. Include it in your .env file:
+
+   ```bash
+   API_AUTH_TOKEN=your-auth-token-here
+   ```
+
+3. Pass it as an environment variable when running containers:
+
+   ```bash
+   docker run -e API_AUTH_TOKEN=your-auth-token-here ...
+   ```
+
+Authentication can be disabled by setting `API_AUTH_ENABLED=false` in your environment.
+
+### Examples
+
+**Creating a runtime with authentication:**
 
 ```bash
-# First, get a token for a specific runtime
-curl -X POST https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/tokens \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}" \
-  -d '{
-    "description": "Development access",
-    "duration": "24h",
-    "permissions": ["read", "execute"]
-  }'
+# First set your token
+export API_AUTH_TOKEN="your-auth-token-here"
 
-# Use the returned token to access the Runtime API directly
-curl -X POST https://content-generation-agent.ai-platform.example.com/kickoff \
+# Then use it in your API requests
+curl -X POST "http://localhost:8080/api/runtimes" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${RUNTIME_ACCESS_TOKEN}" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
   -d '{
-    "crew": "ContentCreationCrew",
-    "inputs": {
-      "topic": "Artificial Intelligence"
-    }
+    "name": "content-agent",
+    "description": "Content generation agent",
+    "entrypoint": "crewai_app/main.py",
+    "codeSource": {
+      "type": "git",
+      "gitRepo": {
+        "url": "https://github.com/username/content-agent",
+        "branch": "main"
+      }
+    },
+    "envVars": [
+      {
+        "name": "OPENAI_API_KEY",
+        "value": "sk-..."
+      }
+    ]
   }'
+```
+
+**File upload with authentication:**
+
+```bash
+curl -X POST "http://localhost:8080/api/runtimes/from-file" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -F "runtime_config=@runtime_config.json" \
+  -F "file=@agent_code.zip"
 ```
 
 ## API Endpoints
@@ -128,1612 +276,1114 @@ curl -X POST https://content-generation-agent.ai-platform.example.com/kickoff \
 
 Creates a new AI Agent Runtime deployment.
 
-<details>
-<summary>Click to see request example</summary>
+**Request Parameters**:
 
-```bash
-curl -X POST https://api.ai-agent-platform.example.com/api/runtimes \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}" \
-  -d '{
-    "name": "content-generation-agent",
-    "description": "Agent for generating blog content",
-    "entrypoint": "crewai_app/orchestrator.py",
-    "code_source": {
-      "type": "github",
-      "gitRepo": {
-        "url": "https://github.com/username/content-generation-crew",
-        "branch": "main"
-      }
-    },
-    "env_vars": [
-      {
-        "name": "OPENAI_API_KEY",
-        "value": "sk-..."
-      },
-      {
-        "name": "WEBHOOK_URL",
-        "value": "https://my-service.example.com/webhook"
-      }
-    ],
-    "resources": {
-      "requests": {
-        "cpu": "100m",
-        "memory": "256Mi"
-      },
-      "limits": {
-        "cpu": "500m",
-        "memory": "512Mi"
-      }
-    },
-    "network_policy": {
-      "internet_access": true,
-      "allowed_domains": ["api.openai.com", "api.anthropic.com", "huggingface.co"],
-      "allowed_ips": [],
-      "egress_rules": []
-    },
-    "replicas": 1
-  }'
-```
+- `namespace` (optional): Kubernetes namespace (can be provided as query parameter or in request body)
+- `dry_run` (optional): If true, only returns the manifest without creating it (default: false)
 
-</details>
-
-**Parameters**:
-
-- `name` (string): Unique name for the runtime
-- `description` (string, optional): Human-readable description
-- `entrypoint` (string): Path to the entry Python file
-- `code_source` (object): Source of the code (GitHub, direct upload, etc.)
-- `env_vars` (array, optional): Environment variables for the runtime
-- `resources` (object, optional): CPU and memory requests/limits
-- `network_policy` (object, optional): Network access controls for the runtime
-  - `internet_access` (boolean, optional): Whether to allow unrestricted internet access (default: true)
-  - `allowed_domains` (array, optional): List of domains to whitelist when internet access is restricted
-  - `allowed_ips` (array, optional): List of IP addresses or CIDR blocks to whitelist
-  - `egress_rules` (array, optional): Advanced Kubernetes NetworkPolicy egress rules
-- `replicas` (integer, optional): Number of replica pods (default: 1)
-- `db_config` (object, optional): Database configuration if required
-
-<details>
-<summary>Click to see response example</summary>
+**Request Body**:
 
 ```json
 {
-  "name": "content-generation-agent",
-  "namespace": "user-namespace",
-  "status": {
-    "phase": "Pending",
-    "message": "Creating deployment",
-    "lastTransitionTime": "2023-07-15T12:34:56.789012Z"
+  "name": "my-agent",
+  "description": "My CrewAI agent",
+  "entrypoint": "crewai_app/main.py",
+  "codeSource": {
+    "type": "git",
+    "gitRepo": {
+      "url": "https://github.com/username/my-crewai-project",
+      "branch": "main"
+    }
   },
-  "spec": {
-    "name": "content-generation-agent",
-    "description": "Agent for generating blog content",
-    "entrypoint": "crewai_app/orchestrator.py",
-    "code_source": {
-      "type": "github",
-      "gitRepo": {
-        "url": "https://github.com/username/content-generation-crew",
-        "branch": "main"
-      }
+  "envVars": [
+    {
+      "name": "OPENAI_API_KEY",
+      "value": "sk-..."
+    }
+  ],
+  "replicas": 1,
+  "resources": {
+    "limits": {
+      "cpu": "1",
+      "memory": "1Gi"
     },
-    "env_vars": [
-      {
-        "name": "OPENAI_API_KEY",
-        "value": "sk-..."
-      },
-      {
-        "name": "WEBHOOK_URL",
-        "value": "https://my-service.example.com/webhook"
-      }
-    ],
-    "resources": {
-      "requests": {
-        "cpu": "100m",
-        "memory": "256Mi"
-      },
-      "limits": {
-        "cpu": "500m",
-        "memory": "512Mi"
-      }
-    },
-    "network_policy": {
-      "internet_access": true,
-      "allowed_domains": ["api.openai.com", "api.anthropic.com", "huggingface.co"],
-      "allowed_ips": []
-    },
-    "replicas": 1
+    "requests": {
+      "cpu": "500m",
+      "memory": "512Mi"
+    }
+  },
+  "dbConfig": {
+    "type": "sqlite"
   }
 }
 ```
 
-</details>
+**Example**:
+
+```bash
+curl -X POST "http://localhost:8080/api/runtimes" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -d '{
+    "name": "content-agent",
+    "description": "Content generation agent",
+    "entrypoint": "crewai_app/main.py",
+    "codeSource": {
+      "type": "git",
+      "gitRepo": {
+        "url": "https://github.com/username/content-agent",
+        "branch": "main"
+      }
+    },
+    "envVars": [
+      {
+        "name": "OPENAI_API_KEY",
+        "value": "sk-..."
+      }
+    ]
+  }'
+```
 
 #### List All Runtimes
 
 **Endpoint**: `GET /api/runtimes`
 
-Returns a list of all AI Agent Runtimes accessible to the authenticated user.
+Lists all AI Agent Runtimes in the specified namespace.
+
+**Query Parameters**:
+
+- `namespace` (optional): Kubernetes namespace to list runtimes from
+
+**Example**:
 
 ```bash
-curl -X GET https://api.ai-agent-platform.example.com/api/runtimes \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
+# List all runtimes
+curl -X GET "http://localhost:8080/api/runtimes" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+
+# List runtimes in specific namespace
+curl -X GET "http://localhost:8080/api/runtimes?namespace=my-namespace" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
 ```
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "runtimes": [
-    {
-      "name": "content-generation-agent",
-      "description": "Agent for generating blog content",
-      "framework": "CrewAI",
-      "access": {
-        "url": "https://content-generation-agent.ai-platform.example.com",
-        "api_docs": "https://content-generation-agent.ai-platform.example.com/docs",
-        "status": "Running"
-      },
-      "created_at": "2023-07-15T12:34:56.789012Z",
-      "status": {
-        "phase": "Running",
-        "lastTransitionTime": "2023-07-15T12:40:56.789012Z"
-      }
-    },
-    {
-      "name": "research-assistant",
-      "description": "Agent for researching topics",
-      "framework": "CrewAI",
-      "access": {
-        "url": "https://research-assistant.ai-platform.example.com",
-        "api_docs": "https://research-assistant.ai-platform.example.com/docs",
-        "status": "Running"
-      },
-      "created_at": "2023-07-14T15:20:11.222333Z",
-      "status": {
-        "phase": "Running",
-        "lastTransitionTime": "2023-07-14T15:22:33.444555Z"
-      }
-    }
-  ],
-  "count": 2,
-  "total": 2
-}
-```
-
-</details>
 
 #### Get Runtime Details
 
 **Endpoint**: `GET /api/runtimes/{name}`
 
-Retrieves detailed information about a specific AI Agent Runtime.
+Gets details of a specific AI Agent Runtime.
+
+**Path Parameters**:
+
+- `name`: Name of the AI Agent Runtime
+
+**Query Parameters**:
+
+- `namespace` (optional): Kubernetes namespace (can be provided as query parameter or in request body)
+
+**Example**:
 
 ```bash
-curl -X GET https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
+curl -X GET "http://localhost:8080/api/runtimes/content-agent" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
 ```
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "name": "content-generation-agent",
-  "description": "Agent for generating blog content",
-  "framework": "CrewAI",
-  "access": {
-    "url": "https://content-generation-agent.ai-platform.example.com",
-    "api_docs": "https://content-generation-agent.ai-platform.example.com/docs",
-    "status": "Running"
-  },
-  "namespace": "user-namespace",
-  "status": {
-    "phase": "Running",
-    "message": "Deployment is ready",
-    "lastTransitionTime": "2023-07-15T12:40:56.789012Z",
-    "endpoint": "https://content-generation-agent.ai-platform.example.com",
-    "availableReplicas": 1,
-    "conditions": [
-      {
-        "type": "Available",
-        "status": "True",
-        "lastTransitionTime": "2023-07-15T12:40:56.789012Z"
-      }
-    ]
-  },
-  "spec": {
-    "name": "content-generation-agent",
-    "description": "Agent for generating blog content",
-    "entrypoint": "crewai_app/orchestrator.py",
-    "code_source": {
-      "type": "github",
-      "gitRepo": {
-        "url": "https://github.com/username/content-generation-crew",
-        "branch": "main"
-      }
-    },
-    "env_vars": [
-      {
-        "name": "OPENAI_API_KEY",
-        "value": "sk-..."
-      },
-      {
-        "name": "WEBHOOK_URL",
-        "value": "https://my-service.example.com/webhook"
-      }
-    ],
-    "resources": {
-      "requests": {
-        "cpu": "100m",
-        "memory": "256Mi"
-      },
-      "limits": {
-        "cpu": "500m",
-        "memory": "512Mi"
-      }
-    },
-    "network_policy": {
-      "internet_access": true,
-      "allowed_domains": ["api.openai.com", "api.anthropic.com", "huggingface.co"],
-      "allowed_ips": []
-    },
-    "replicas": 1
-  },
-  "created_at": "2023-07-15T12:34:56.789012Z",
-  "updated_at": "2023-07-15T12:40:56.789012Z",
-  "runtime_metrics": {
-    "jobs_total": 15,
-    "jobs_active": 2,
-    "cpu_usage": "125m",
-    "memory_usage": "156Mi"
-  }
-}
-```
-
-</details>
 
 #### Delete Runtime
 
 **Endpoint**: `DELETE /api/runtimes/{name}`
 
-Deletes an AI Agent Runtime and all associated resources.
+Deletes a specific AI Agent Runtime.
+
+**Path Parameters**:
+
+- `name`: Name of the AI Agent Runtime
+
+**Query Parameters**:
+
+- `namespace` (optional): Kubernetes namespace (can be provided as query parameter or in request body)
+
+**Example**:
 
 ```bash
-curl -X DELETE https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
+curl -X DELETE "http://localhost:8080/api/runtimes/content-agent" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
 ```
 
-<details>
-<summary>Click to see response example</summary>
+#### Restart Runtime
+
+**Endpoint**: `POST /api/runtimes/{name}/restart`
+
+Restarts a specific AI Agent Runtime.
+
+**Path Parameters**:
+
+- `name`: Name of the AI Agent Runtime
+
+**Query Parameters**:
+
+- `namespace` (optional): Kubernetes namespace (can be provided as query parameter or in request body)
+
+**Example**:
+
+```bash
+curl -X POST "http://localhost:8080/api/runtimes/content-agent/restart" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+```
+
+#### Create Runtime from File
+
+**Endpoint**: `POST /api/runtimes/from-file`
+
+Creates a new AI Agent Runtime using an uploaded code file (ZIP archive) and a runtime configuration.
+
+**Request Parameters**:
+
+- `runtime_config` (form field): JSON file containing the runtime configuration
+- `file` (form file): ZIP archive containing the code files for the agent
+
+**Example**:
+
+```bash
+curl -X POST "http://localhost:8080/api/runtimes/from-file" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -F "runtime_config=@runtime_config.json" \
+  -F "file=@agent_code.zip"
+```
+
+Example `runtime_config.json`:
 
 ```json
 {
-  "message": "Runtime deletion initiated",
-  "name": "content-generation-agent"
-}
-```
-
-</details>
-
-### Environment Variables
-
-#### Add or Update Environment Variables
-
-**Endpoint**: `POST /api/runtimes/{name}/environment`
-
-Adds or updates environment variables for a specific runtime.
-
-<details>
-<summary>Click to see request example</summary>
-
-```bash
-curl -X POST https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/environment \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}" \
-  -d '{
-    "env_vars": [
-      {
-        "name": "OPENAI_API_KEY",
-        "value": "sk-new-key"
-      },
-      {
-        "name": "DEBUG_MODE",
-        "value": "true"
-      }
-    ]
-  }'
-```
-
-</details>
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "message": "Environment variables updated",
-  "runtime_name": "content-generation-agent",
-  "updated_vars": ["OPENAI_API_KEY", "DEBUG_MODE"]
-}
-```
-
-</details>
-
-#### Get Environment Variables
-
-**Endpoint**: `GET /api/runtimes/{name}/environment`
-
-Retrieves all environment variables for a specific runtime.
-
-```bash
-curl -X GET https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/environment \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "runtime_name": "content-generation-agent",
-  "env_vars": [
+  "name": "file-upload-agent",
+  "description": "Agent using file upload",
+  "entrypoint": "main.py",
+  "codeSource": {
+    "type": "inline"
+  },
+  "envVars": [
     {
       "name": "OPENAI_API_KEY",
       "value": "sk-..."
     },
     {
-      "name": "WEBHOOK_URL",
-      "value": "https://my-service.example.com/webhook"
+      "name": "DEBUG",
+      "value": "true"
+    }
+  ],
+  "replicas": 1
+}
+```
+
+### Environment Variables
+
+Environment variables can be configured when creating or updating a runtime. They can be specified in two ways:
+
+1. As part of the runtime creation request
+2. Through Kubernetes secrets or configmaps
+
+#### Environment Variable Configuration
+
+When creating a runtime, you can specify environment variables in the request body:
+
+```json
+{
+  "name": "my-agent",
+  "description": "My agent with environment variables",
+  "entrypoint": "main.py",
+  "codeSource": {
+    "type": "git",
+    "gitRepo": {
+      "url": "https://github.com/username/my-agent",
+      "branch": "main"
+    }
+  },
+  "envVars": [
+    {
+      "name": "OPENAI_API_KEY",
+      "value": "sk-..."
     },
     {
-      "name": "DEBUG_MODE",
+      "name": "DEBUG",
       "value": "true"
     }
   ]
 }
 ```
 
-</details>
+#### Using Kubernetes Secrets and ConfigMaps
 
-#### Update Specific Environment Variables
+For sensitive data, you can reference Kubernetes secrets:
 
-**Endpoint**: `PATCH /api/runtimes/{name}/environment`
-
-Updates specific environment variables for a runtime.
-
-<details>
-<summary>Click to see request example</summary>
-
-```bash
-curl -X PATCH https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/environment \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}" \
-  -d '{
-    "env_vars": [
-      {
-        "name": "DEBUG_MODE",
-        "value": "false"
+```json
+{
+  "envVars": [
+    {
+      "name": "OPENAI_API_KEY",
+      "valueFrom": {
+        "secretKeyRef": {
+          "name": "api-keys",
+          "key": "openai"
+        }
       }
-    ]
-  }'
-```
-
-</details>
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "message": "Environment variables updated",
-  "runtime_name": "content-generation-agent",
-  "updated_vars": ["DEBUG_MODE"]
+    }
+  ]
 }
 ```
 
-</details>
-
-#### Delete Environment Variable
-
-**Endpoint**: `DELETE /api/runtimes/{name}/environment/{var_name}`
-
-Removes a specific environment variable from a runtime.
-
-```bash
-curl -X DELETE https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/environment/DEBUG_MODE \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-<details>
-<summary>Click to see response example</summary>
+Or use ConfigMaps for non-sensitive configuration:
 
 ```json
 {
-  "message": "Environment variable deleted",
-  "runtime_name": "content-generation-agent",
-  "var_name": "DEBUG_MODE"
+  "envVars": [
+    {
+      "name": "LOG_LEVEL",
+      "valueFrom": {
+        "configMapKeyRef": {
+          "name": "app-config",
+          "key": "log-level"
+        }
+      }
+    }
+  ]
 }
 ```
-
-</details>
 
 ### Code Management
 
-#### Upload Code Archive
+Code for AI Agent Runtimes can be sourced in several ways:
 
-**Endpoint**: `POST /api/runtimes/{name}/code/archive`
+#### Git Repository
 
-Uploads a code archive (ZIP, TAR, TAR.GZ) for a runtime.
-
-<details>
-<summary>Click to see request example</summary>
-
-```bash
-curl -X POST https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/code/archive \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}" \
-  -H "Content-Type: multipart/form-data" \
-  -F "archive=@./my-agent-code.zip" \
-  -F "archive_type=zip" \
-  -F "extract_directory=/"
-```
-
-</details>
-
-<details>
-<summary>Click to see response example</summary>
+Use a Git repository as the code source:
 
 ```json
 {
-  "message": "Code archive uploaded and deployed",
-  "runtime_name": "content-generation-agent",
-  "archive_type": "zip",
-  "files_count": 8
-}
-```
-
-</details>
-
-#### Upload Single File
-
-**Endpoint**: `POST /api/runtimes/{name}/code/file`
-
-Uploads a single file to a runtime.
-
-<details>
-<summary>Click to see request example</summary>
-
-```bash
-curl -X POST https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/code/file \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@./orchestrator.py" \
-  -F "filename=crewai_app/orchestrator.py" \
-  -F "content_type=text/x-python"
-```
-
-</details>
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "message": "File uploaded and deployed",
-  "runtime_name": "content-generation-agent",
-  "filename": "crewai_app/orchestrator.py"
-}
-```
-
-</details>
-
-#### Connect GitHub Repository
-
-**Endpoint**: `POST /api/runtimes/{name}/code/github`
-
-Connects a GitHub repository to a runtime.
-
-<details>
-<summary>Click to see request example</summary>
-
-```bash
-curl -X POST https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/code/github \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}" \
-  -d '{
-    "url": "https://github.com/username/content-generation-crew",
-    "branch": "main",
-    "auth": {
-      "type": "token",
-      "token": "github-token"
-    }
-  }'
-```
-
-</details>
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "message": "GitHub repository connected and code deployed",
-  "runtime_name": "content-generation-agent",
-  "repository": "https://github.com/username/content-generation-crew",
-  "branch": "main"
-}
-```
-
-</details>
-
-#### Get Code Metadata
-
-**Endpoint**: `GET /api/runtimes/{name}/code`
-
-Retrieves metadata about the code currently deployed for a runtime.
-
-```bash
-curl -X GET https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/code \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "runtime_name": "content-generation-agent",
-  "code_source": {
-    "type": "github",
+  "codeSource": {
+    "type": "git",
     "gitRepo": {
-      "url": "https://github.com/username/content-generation-crew",
+      "url": "https://github.com/username/my-agent",
       "branch": "main"
     }
-  },
-  "last_updated": "2023-07-15T12:34:56.789012Z",
-  "files_count": 12,
-  "entrypoint": "crewai_app/orchestrator.py"
+  }
 }
 ```
 
-</details>
-
-#### Delete Code
-
-**Endpoint**: `DELETE /api/runtimes/{name}/code`
-
-Deletes all code associated with a runtime.
-
-```bash
-curl -X DELETE https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/code \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-<details>
-<summary>Click to see response example</summary>
+For private repositories, include authentication:
 
 ```json
 {
-  "message": "Code deleted",
-  "runtime_name": "content-generation-agent"
+  "codeSource": {
+    "type": "git",
+    "gitRepo": {
+      "url": "https://github.com/username/my-agent",
+      "branch": "main",
+      "auth": {
+        "type": "token",
+        "token": "github_pat_..."
+      }
+    }
+  }
 }
 ```
 
-</details>
+#### File Upload
+
+Upload code directly using the `/api/runtimes/from-file` endpoint:
+
+```bash
+# Create runtime_config.json
+cat > runtime_config.json << EOF
+{
+  "name": "file-upload-agent",
+  "description": "Agent using file upload",
+  "entrypoint": "main.py",
+  "codeSource": {
+    "type": "inline"
+  },
+  "envVars": [
+    {
+      "name": "OPENAI_API_KEY",
+      "value": "sk-..."
+    }
+  ]
+}
+EOF
+
+# Zip your code
+zip -r agent_code.zip your_agent_directory/
+
+# Upload code and configuration
+curl -X POST "http://localhost:8080/api/runtimes/from-file" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -F "runtime_config=@runtime_config.json" \
+  -F "file=@agent_code.zip"
+```
+
+#### ConfigMap
+
+Use an existing Kubernetes ConfigMap as the code source:
+
+```json
+{
+  "codeSource": {
+    "type": "configmap",
+    "configMapName": "my-agent-code"
+  }
+}
+```
 
 ### Runtime Operations
 
-#### Start Runtime
-
-**Endpoint**: `POST /api/runtimes/{name}/start`
-
-Starts a stopped runtime.
-
-```bash
-curl -X POST https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/start \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "message": "Runtime start initiated",
-  "runtime_name": "content-generation-agent"
-}
-```
-
-</details>
-
-#### Stop Runtime
-
-**Endpoint**: `POST /api/runtimes/{name}/stop`
-
-Stops a running runtime.
-
-```bash
-curl -X POST https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/stop \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "message": "Runtime stop initiated",
-  "runtime_name": "content-generation-agent"
-}
-```
-
-</details>
+The following operations are available for managing AI Agent Runtimes:
 
 #### Restart Runtime
 
-**Endpoint**: `POST /api/runtimes/{name}/restart`
-
-Restarts a runtime.
+Restart a runtime to apply configuration changes or recover from errors:
 
 ```bash
-curl -X POST https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/restart \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
+curl -X POST "http://localhost:8080/api/runtimes/my-agent/restart" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
 ```
 
-<details>
-<summary>Click to see response example</summary>
+#### Delete Runtime
 
-```json
-{
-  "message": "Runtime restart initiated",
-  "runtime_name": "content-generation-agent"
-}
+Remove a runtime and all associated resources:
+
+```bash
+curl -X DELETE "http://localhost:8080/api/runtimes/my-agent" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
 ```
-
-</details>
 
 #### Get Runtime Status
 
-**Endpoint**: `GET /api/runtimes/{name}/status`
-
-Retrieves the current status of a runtime.
+Check the current status of a runtime:
 
 ```bash
-curl -X GET https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/status \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
+curl -X GET "http://localhost:8080/api/runtimes/my-agent" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
 ```
 
-<details>
-<summary>Click to see response example</summary>
+The response includes:
+
+- Runtime phase (Pending, Running, Failed, etc.)
+- Status message
+- Last transition time
+- Pod and service status
+
+### Error Handling
+
+The API uses standard HTTP status codes and provides detailed error messages:
+
+- `400 Bad Request`: Invalid request parameters or body
+- `401 Unauthorized`: Missing or invalid API token
+- `404 Not Found`: Runtime or resource not found
+- `500 Internal Server Error`: Server-side error
+
+Example error response:
 
 ```json
 {
-  "runtime_name": "content-generation-agent",
-  "status": {
-    "phase": "Running",
-    "message": "Deployment is ready",
-    "lastTransitionTime": "2023-07-15T12:40:56.789012Z",
-    "endpoint": "https://content-generation-agent.ai-platform.example.com",
-    "availableReplicas": 1,
-    "conditions": [
-      {
-        "type": "Available",
-        "status": "True",
-        "lastTransitionTime": "2023-07-15T12:40:56.789012Z"
-      }
-    ]
-  },
-  "pods": [
-    {
-      "name": "content-generation-agent-5d8f7c9b68-abcd1",
-      "status": "Running",
-      "ready": true,
-      "restarts": 0,
-      "created_at": "2023-07-15T12:35:22.111222Z"
-    }
-  ]
+  "detail": "Failed to create AI Agent Runtime: Invalid configuration"
 }
 ```
 
-</details>
-
-#### Get Runtime Logs
-
-**Endpoint**: `GET /api/runtimes/{name}/logs`
-
-Retrieves logs for a runtime.
-
-```bash
-curl -X GET "https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/logs?container=agent&tail=100" \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-**Query Parameters**:
-
-- `container` (string, optional): Container name (default: "agent")
-- `tail` (integer, optional): Number of lines to return (default: 100)
-- `since` (string, optional): Return logs since this time (e.g., "1h", "2d")
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "runtime_name": "content-generation-agent",
-  "container": "agent",
-  "logs": [
-    {
-      "timestamp": "2023-07-15T12:35:30.123456Z",
-      "message": "Starting AI Agent Runtime..."
-    },
-    {
-      "timestamp": "2023-07-15T12:35:31.234567Z",
-      "message": "Loading module from crewai_app/orchestrator.py"
-    },
-    {
-      "timestamp": "2023-07-15T12:35:32.345678Z",
-      "message": "Found CrewBase class: ContentCreationCrew"
-    },
-    {
-      "timestamp": "2023-07-15T12:35:33.456789Z",
-      "message": "API server started at http://0.0.0.0:8888"
-    }
-  ]
-}
-```
-
-</details>
-
-#### Tail Runtime Logs
-
-**Endpoint**: `GET /api/runtimes/{name}/logs/tail`
-
-Streams logs in real-time for a runtime.
-
-```bash
-curl -X GET "https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/logs/tail?since=2023-07-15T12:35:30Z" \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-**Query Parameters**:
-
-- `container` (string, optional): Container name (default: "agent")
-- `since` (string, optional): ISO 8601 timestamp to start from
-- `follow` (boolean, optional): Whether to follow the logs stream (default: true)
-
-<details>
-<summary>Click to see response example</summary>
-
-```
-This endpoint returns a stream of log events, one per line:
-
-{"timestamp":"2023-07-15T12:35:34.567890Z","message":"Processing job 987ca65a-62cf-4c48-850b-ad0eb3e37393"}
-{"timestamp":"2023-07-15T12:35:35.678901Z","message":"Job started for crew ContentCreationCrew"}
-{"timestamp":"2023-07-15T12:35:36.789012Z","message":"Agent 'researcher' starting task..."}
-...
-```
-
-</details>
-
-#### Get Runtime Events
-
-**Endpoint**: `GET /api/runtimes/{name}/events`
-
-Retrieves Kubernetes events related to a runtime.
-
-```bash
-curl -X GET "https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/events" \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "runtime_name": "content-generation-agent",
-  "events": [
-    {
-      "type": "Normal",
-      "reason": "Created",
-      "message": "Created container agent",
-      "timestamp": "2023-07-15T12:34:56.789012Z",
-      "count": 1
-    },
-    {
-      "type": "Normal",
-      "reason": "Started",
-      "message": "Started container agent",
-      "timestamp": "2023-07-15T12:34:58.789012Z",
-      "count": 1
-    },
-    {
-      "type": "Warning",
-      "reason": "Unhealthy",
-      "message": "Liveness probe failed",
-      "timestamp": "2023-07-15T12:40:30.789012Z",
-      "count": 3
-    }
-  ]
-}
-```
-
-</details>
-
-### Token Management
-
-#### Create Token
-
-**Endpoint**: `POST /api/runtimes/{name}/tokens`
-
-Creates a new access token for a specific runtime.
-
-<details>
-<summary>Click to see request example</summary>
-
-```bash
-curl -X POST https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/tokens \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}" \
-  -d '{
-    "description": "Development access token",
-    "duration": "24h",
-    "permissions": ["read", "execute"]
-  }'
-```
-
-</details>
-
-**Parameters**:
-
-- `description` (string): Human-readable description of the token's purpose
-- `duration` (string, optional): Duration for which the token is valid (e.g., "1h", "30d") (default: "24h")
-- `permissions` (array, optional): List of permissions granted to this token (default: ["read", "execute"])
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "token_id": "t-12345abc",
-  "description": "Development access token",
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer",
-  "expires_at": "2023-07-16T12:34:56.789012Z",
-  "created_at": "2023-07-15T12:34:56.789012Z",
-  "permissions": ["read", "execute"]
-}
-```
-
-</details>
-
-#### List Tokens
-
-**Endpoint**: `GET /api/runtimes/{name}/tokens`
-
-Lists all tokens for a specific runtime.
-
-```bash
-curl -X GET https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/tokens \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "tokens": [
-    {
-      "token_id": "t-12345abc",
-      "description": "Development access token",
-      "expires_at": "2023-07-16T12:34:56.789012Z",
-      "created_at": "2023-07-15T12:34:56.789012Z",
-      "created_by": "user-789",
-      "permissions": ["read", "execute"],
-      "last_used": "2023-07-15T13:22:10.123456Z"
-    },
-    {
-      "token_id": "t-67890def",
-      "description": "CI/CD integration",
-      "expires_at": "2023-08-14T09:12:34.567890Z",
-      "created_at": "2023-07-15T09:12:34.567890Z",
-      "created_by": "user-789",
-      "permissions": ["read", "execute"],
-      "last_used": null
-    }
-  ],
-  "count": 2
-}
-```
-
-</details>
-
-#### Revoke Token
-
-**Endpoint**: `DELETE /api/runtimes/{name}/tokens/{token_id}`
-
-Revokes a specific token immediately.
-
-```bash
-curl -X DELETE https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/tokens/t-12345abc \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "message": "Token revoked successfully",
-  "token_id": "t-12345abc"
-}
-```
-
-</details>
-
-#### Refresh Token
-
-**Endpoint**: `POST /api/runtimes/{name}/tokens/refresh`
-
-Refreshes an existing token, extending its lifetime.
-
-<details>
-<summary>Click to see request example</summary>
-
-```bash
-curl -X POST https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/tokens/refresh \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}" \
-  -d '{
-    "token_id": "t-12345abc",
-    "duration": "24h"
-  }'
-```
-
-</details>
-
-**Parameters**:
-
-- `token_id` (string): ID of the token to refresh
-- `duration` (string, optional): New duration for the token (e.g., "1h", "30d") (default: "24h")
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "token_id": "t-12345abc",
-  "description": "Development access token",
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer",
-  "expires_at": "2023-07-17T12:34:56.789012Z",
-  "created_at": "2023-07-15T12:34:56.789012Z",
-  "refreshed_at": "2023-07-16T12:34:56.789012Z",
-  "permissions": ["read", "execute"]
-}
-```
-
-</details>
-
-### Network Policy Management
-
-#### Update Network Policy
-
-**Endpoint**: `PATCH /api/runtimes/{name}/network-policy`
-
-Updates the network access policy for a specific runtime.
-
-<details>
-<summary>Click to see request example</summary>
-
-```bash
-curl -X PATCH https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/network-policy \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}" \
-  -d '{
-    "internet_access": false,
-    "allowed_domains": [
-      "api.openai.com",
-      "api.anthropic.com",
-      "huggingface.co",
-      "data.example.com"
-    ],
-    "allowed_ips": ["203.0.113.0/24"]
-  }'
-```
-
-</details>
-
-**Parameters**:
-- `internet_access` (boolean, optional): Whether to allow unrestricted internet access
-- `allowed_domains` (array, optional): List of domains to whitelist when internet access is restricted
-- `allowed_ips` (array, optional): List of IP addresses or CIDR blocks to whitelist
-- `egress_rules` (array, optional): Advanced Kubernetes NetworkPolicy egress rules
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "message": "Network policy updated",
-  "runtime_name": "content-generation-agent",
-  "network_policy": {
-    "internet_access": false,
-    "allowed_domains": [
-      "api.openai.com",
-      "api.anthropic.com",
-      "huggingface.co",
-      "data.example.com"
-    ],
-    "allowed_ips": ["203.0.113.0/24"],
-    "egress_rules": []
-  }
-}
-```
-
-</details>
-
-#### Get Network Policy
-
-**Endpoint**: `GET /api/runtimes/{name}/network-policy`
-
-Retrieves the current network policy for a specific runtime.
-
-```bash
-curl -X GET https://api.ai-agent-platform.example.com/api/runtimes/content-generation-agent/network-policy \
-  -H "Authorization: Bearer ${AI_PLATFORM_API_KEY}"
-```
-
-<details>
-<summary>Click to see response example</summary>
-
-```json
-{
-  "runtime_name": "content-generation-agent",
-  "network_policy": {
-    "internet_access": false,
-    "allowed_domains": [
-      "api.openai.com",
-      "api.anthropic.com",
-      "huggingface.co",
-      "data.example.com"
-    ],
-    "allowed_ips": ["203.0.113.0/24"],
-    "egress_rules": [],
-    "current_k8s_policy": {
-      "apiVersion": "networking.k8s.io/v1",
-      "kind": "NetworkPolicy",
-      "metadata": {
-        "name": "content-generation-agent-network-policy"
-      },
-      "spec": {
-        "podSelector": {
-          "matchLabels": {
-            "app": "content-generation-agent"
-          }
-        },
-        "egress": [
-          {
-            "to": [
-              {
-                "dnsName": "api.openai.com"
-              },
-              {
-                "dnsName": "api.anthropic.com"
-              },
-              {
-                "dnsName": "huggingface.co"
-              },
-              {
-                "dnsName": "data.example.com"
-              }
-            ]
-          },
-          {
-            "to": [
-              {
-                "ipBlock": {
-                  "cidr": "203.0.113.0/24"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    }
-  }
-}
-```
-
-</details>
-
-## Request and Response Models
-
-### AI Agent Runtime Models
-
-```python
-class AIAgentRuntimeRequest(BaseModel):
-    name: str
-    description: str = ""
-    entrypoint: str
-    code_source: CodeSource
-    env_vars: Optional[List[EnvVar]] = None
-    resources: Optional[ResourceRequirements] = None
-    replicas: int = 1
-    db_config: Optional[DBConfig] = None
-
-class AIAgentRuntimeResponse(BaseModel):
-    name: str
-    namespace: str
-    status: Optional[AIAgentRuntimeStatusResponse] = None
-```
-
-### Code Source Models
-
-```python
-class CodeSource(BaseModel):
-    type: Literal["github", "configMap", "inline"]
-    gitRepo: Optional[GitRepo] = None
-    configMapName: Optional[str] = None
-
-class GitRepo(BaseModel):
-    url: str
-    branch: str = "main"
-    auth: Optional[GitRepoAuth] = None
-
-class GitRepoAuth(BaseModel):
-    type: Literal["token", "ssh"]
-    token: Optional[str] = None
-    sshKey: Optional[str] = None
-```
-
-### Environment Variable Models
-
-```python
-class EnvVar(BaseModel):
-    name: str
-    value: Optional[str] = None
-    valueFrom: Optional[EnvVarSource] = None
-
-class EnvVarSource(BaseModel):
-    secretKeyRef: Optional[SecretKeySelector] = None
-    configMapKeyRef: Optional[ConfigMapKeySelector] = None
-
-class SecretKeySelector(BaseModel):
-    name: str
-    key: str
-
-class ConfigMapKeySelector(BaseModel):
-    name: str
-    key: str
-```
-
-### Resource Requirement Models
-
-```python
-class ResourceRequirements(BaseModel):
-    limits: Optional[Dict[str, str]] = None
-    requests: Optional[Dict[str, str]] = None
-```
-
-### Token Models
-
-```python
-class TokenRequest(BaseModel):
-    description: str
-    duration: str = "24h"  # Format: "1h", "30d", etc.
-    permissions: List[str] = ["read", "execute"]
-    
-class TokenResponse(BaseModel):
-    token_id: str
-    description: str
-    access_token: str
-    token_type: str = "Bearer"
-    expires_at: datetime
-    created_at: datetime
-    permissions: List[str]
-    
-class TokenMetadata(BaseModel):
-    token_id: str
-    description: str
-    expires_at: datetime
-    created_at: datetime
-    created_by: str
-    permissions: List[str]
-    last_used: Optional[datetime] = None
-```
-
-### Network Policy Models
-
-```python
-class NetworkPolicy(BaseModel):
-    internet_access: bool = True
-    allowed_domains: List[str] = []
-    allowed_ips: List[str] = []
-    egress_rules: List[Dict[str, Any]] = []
-
-class NetworkPolicyResponse(BaseModel):
-    runtime_name: str
-    network_policy: NetworkPolicy
-    current_k8s_policy: Optional[Dict[str, Any]] = None
-```
+Common error scenarios:
+
+1. **Authentication Errors**
+
+   ```bash
+   # Missing token
+   curl -X GET "http://localhost:8080/api/runtimes"
+   # Response: {"detail":"Not authenticated"}
+
+   # Invalid token
+   curl -X GET "http://localhost:8080/api/runtimes" \
+     -H "Authorization: Bearer invalid-token"
+   # Response: {"detail":"Invalid authentication credentials"}
+   ```
+
+2. **Resource Not Found**
+
+   ```bash
+   curl -X GET "http://localhost:8080/api/runtimes/non-existent" \
+     -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+   # Response: {"detail":"AI Agent Runtime not found: non-existent"}
+   ```
+
+3. **Invalid Configuration**
+
+   ```bash
+   curl -X POST "http://localhost:8080/api/runtimes" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+     -d '{
+       "name": "invalid-agent",
+       "codeSource": {
+         "type": "unknown"
+       }
+     }'
+   # Response: {"detail":"Invalid code source type: unknown"}
+   ```
+
+### Best Practices
+
+1. **Authentication**
+   - Store API tokens securely
+   - Rotate tokens periodically
+   - Use environment variables for token storage
+
+2. **Environment Variables**
+   - Use Kubernetes secrets for sensitive data
+   - Use ConfigMaps for non-sensitive configuration
+   - Follow the principle of least privilege
+
+3. **Code Management**
+   - Use version control (Git) for production deployments
+   - Keep code archives small and focused
+   - Include only necessary files in uploads
+
+4. **Error Handling**
+   - Implement proper error handling in your code
+   - Check API responses for error messages
+   - Use appropriate HTTP status codes
+
+5. **Resource Management**
+   - Set appropriate resource limits
+   - Monitor resource usage
+   - Clean up unused runtimes
 
 ## Implementation Examples
 
-### Basic Agent Deployment
+### Creating a Simple Runtime
 
-<details>
-<summary>Click to see deployment example</summary>
+Here's an example of creating a basic AI Agent Runtime:
 
-```python
-import requests
-import json
-
-# Authentication
-API_BASE_URL = "https://api.ai-agent-platform.example.com"
-API_KEY = "your-api-key-here"
-HEADERS = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {API_KEY}"
-}
-
-# Define the runtime
-runtime_data = {
-    "name": "simple-agent",
-    "description": "Simple CrewAI agent example",
-    "entrypoint": "main.py",
-    "code_source": {
-        "type": "github",
-        "gitRepo": {
-            "url": "https://github.com/username/simple-crewai-agent",
-            "branch": "main"
+```bash
+# Create runtime configuration
+cat > runtime_config.json << EOF
+{
+  "name": "hello-agent",
+  "description": "Simple hello world agent",
+  "entrypoint": "main.py",
+  "codeSource": {
+    "type": "git",
+    "gitRepo": {
+      "url": "https://github.com/username/hello-agent",
+      "branch": "main"
+    }
+  },
+  "envVars": [
+    {
+      "name": "OPENAI_API_KEY",
+      "valueFrom": {
+        "secretKeyRef": {
+          "name": "api-keys",
+          "key": "openai"
         }
+      }
+    }
+  ],
+  "resources": {
+    "requests": {
+      "cpu": "100m",
+      "memory": "256Mi"
     },
-    "env_vars": [
-        {
-            "name": "OPENAI_API_KEY",
-            "value": "sk-your-key-here"
-        }
-    ],
-    "resources": {
-        "requests": {
-            "cpu": "100m",
-            "memory": "256Mi"
-        },
-        "limits": {
-            "cpu": "500m",
-            "memory": "512Mi"
-        }
+    "limits": {
+      "cpu": "500m",
+      "memory": "512Mi"
     }
+  }
 }
+EOF
 
 # Create the runtime
-response = requests.post(f"{API_BASE_URL}/api/runtimes", 
-                        headers=HEADERS, 
-                        data=json.dumps(runtime_data))
-print(f"Create response: {response.status_code}")
-print(json.dumps(response.json(), indent=2))
-
-# Get runtime status (poll until Running)
-import time
-runtime_name = runtime_data["name"]
-max_attempts = 10
-attempt = 0
-
-while attempt < max_attempts:
-    status_response = requests.get(f"{API_BASE_URL}/api/runtimes/{runtime_name}/status", 
-                                  headers=HEADERS)
-    status_data = status_response.json()
-    print(f"Status: {status_data['status']['phase']}")
-    
-    if status_data['status']['phase'] == 'Running':
-        print(f"Endpoint: {status_data['status']['endpoint']}")
-        break
-        
-    attempt += 1
-    time.sleep(5)
+curl -X POST "http://localhost:8080/api/runtimes" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -d @runtime_config.json
 ```
 
-</details>
+### File Upload Deployment
 
-### File Upload Example
+Example of deploying an agent using file upload:
 
-<details>
-<summary>Click to see file upload example</summary>
+```bash
+# Create a simple agent
+mkdir my-agent
+cat > my-agent/main.py << EOF
+import os
+from openai import OpenAI
 
-```python
-import requests
-
-# Authentication
-API_BASE_URL = "https://api.ai-agent-platform.example.com"
-API_KEY = "your-api-key-here"
-AUTH_HEADER = {"Authorization": f"Bearer {API_KEY}"}
-
-# Runtime name
-runtime_name = "file-upload-example"
-
-# Create a simple runtime first with minimal configuration
-runtime_data = {
-    "name": runtime_name,
-    "description": "Agent with file upload",
-    "entrypoint": "main.py",
-    "code_source": {
-        "type": "inline"
-    }
-}
-
-# Create the runtime
-create_response = requests.post(
-    f"{API_BASE_URL}/api/runtimes", 
-    headers={**AUTH_HEADER, "Content-Type": "application/json"},
-    json=runtime_data
-)
-print(f"Create response: {create_response.status_code}")
-
-# Now upload the main file
-with open("main.py", "rb") as f:
-    files = {
-        "file": ("main.py", f, "text/x-python")
-    }
-    data = {
-        "filename": "main.py",
-        "content_type": "text/x-python"
-    }
-    upload_response = requests.post(
-        f"{API_BASE_URL}/api/runtimes/{runtime_name}/code/file",
-        headers=AUTH_HEADER,
-        files=files,
-        data=data
+def main():
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": "Say hello!"}]
     )
-    print(f"Upload response: {upload_response.status_code}")
-    print(upload_response.json())
+    print(response.choices[0].message.content)
+
+if __name__ == "__main__":
+    main()
+EOF
+
+cat > my-agent/requirements.txt << EOF
+openai==1.12.0
+EOF
+
+# Create runtime configuration
+cat > runtime_config.json << EOF
+{
+  "name": "file-agent",
+  "description": "Agent deployed via file upload",
+  "entrypoint": "main.py",
+  "codeSource": {
+    "type": "inline"
+  },
+  "envVars": [
+    {
+      "name": "OPENAI_API_KEY",
+      "value": "sk-..."
+    }
+  ]
+}
+EOF
+
+# Zip the agent code
+zip -r agent_code.zip my-agent/
+
+# Upload code and configuration
+curl -X POST "http://localhost:8080/api/runtimes/from-file" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -F "runtime_config=@runtime_config.json" \
+  -F "file=@agent_code.zip"
 ```
 
-</details>
+### Using Git Repository with Authentication
 
-### Runtime API Token Usage
+Example of creating a runtime using a private Git repository:
 
-<details>
-<summary>Click to see runtime API token usage example</summary>
-
-```python
-import requests
-import json
-import time
-from datetime import datetime, timedelta
-
-# Authentication for Management API
-API_BASE_URL = "https://api.ai-agent-platform.example.com"
-MGMT_API_KEY = "your-management-api-key-here"
-MGMT_HEADERS = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {MGMT_API_KEY}"
-}
-
-# Get runtime details
-runtime_name = "content-generation-agent"
-runtime_response = requests.get(
-    f"{API_BASE_URL}/api/runtimes/{runtime_name}",
-    headers=MGMT_HEADERS
-)
-runtime_data = runtime_response.json()
-runtime_url = runtime_data["status"]["endpoint"]
-
-# Request a token for the runtime
-token_response = requests.post(
-    f"{API_BASE_URL}/api/runtimes/{runtime_name}/tokens",
-    headers=MGMT_HEADERS,
-    json={
-        "description": "API client access",
-        "duration": "24h",
-        "permissions": ["read", "execute"]
+```bash
+cat > runtime_config.json << EOF
+{
+  "name": "git-agent",
+  "description": "Agent from private Git repo",
+  "entrypoint": "src/main.py",
+  "codeSource": {
+    "type": "git",
+    "gitRepo": {
+      "url": "https://github.com/username/private-agent",
+      "branch": "main",
+      "auth": {
+        "type": "token",
+        "token": "github_pat_..."
+      }
     }
-)
-token_data = token_response.json()
-runtime_token = token_data["access_token"]
-
-# Use the token to interact with the Runtime API
-runtime_headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {runtime_token}"
-}
-
-# Submit a job to the runtime
-job_response = requests.post(
-    f"{runtime_url}/kickoff",
-    headers=runtime_headers,
-    json={
-        "crew": "ContentCreationCrew",
-        "inputs": {
-            "topic": "AI Agent Architecture"
+  },
+  "envVars": [
+    {
+      "name": "OPENAI_API_KEY",
+      "valueFrom": {
+        "secretKeyRef": {
+          "name": "api-keys",
+          "key": "openai"
         }
+      }
     }
-)
-job_data = job_response.json()
-job_id = job_data["job_id"]
+  ]
+}
+EOF
 
-# Poll for job completion
-max_attempts = 20
-attempt = 0
-job_completed = False
-
-while attempt < max_attempts and not job_completed:
-    job_status_response = requests.get(
-        f"{runtime_url}/job/{job_id}",
-        headers=runtime_headers
-    )
-    job_status_data = job_status_response.json()
-    
-    if job_status_data["status"] in ["completed", "error"]:
-        job_completed = True
-        print(f"Job completed with status: {job_status_data['status']}")
-        if "result" in job_status_data:
-            print(f"Content length: {job_status_data['result']['length']}")
-    else:
-        print(f"Job status: {job_status_data['status']}")
-        attempt += 1
-        time.sleep(5)
-
-# When finished with the token, revoke it
-requests.delete(
-    f"{API_BASE_URL}/api/runtimes/{runtime_name}/tokens/{token_data['token_id']}",
-    headers=MGMT_HEADERS
-)
+curl -X POST "http://localhost:8080/api/runtimes" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -d @runtime_config.json
 ```
 
-</details>
+### Managing Environment Variables
+
+Example of using different types of environment variables:
+
+```bash
+# Using direct values
+cat > runtime_config.json << EOF
+{
+  "name": "env-agent",
+  "description": "Agent with various env vars",
+  "entrypoint": "main.py",
+  "codeSource": {
+    "type": "git",
+    "gitRepo": {
+      "url": "https://github.com/username/env-agent",
+      "branch": "main"
+    }
+  },
+  "envVars": [
+    {
+      "name": "DEBUG",
+      "value": "true"
+    },
+    {
+      "name": "LOG_LEVEL",
+      "value": "INFO"
+    }
+  ]
+}
+EOF
+
+# Using Kubernetes secrets and configmaps
+cat > runtime_config.json << EOF
+{
+  "name": "secure-agent",
+  "description": "Agent with secure env vars",
+  "entrypoint": "main.py",
+  "codeSource": {
+    "type": "git",
+    "gitRepo": {
+      "url": "https://github.com/username/secure-agent",
+      "branch": "main"
+    }
+  },
+  "envVars": [
+    {
+      "name": "API_KEY",
+      "valueFrom": {
+        "secretKeyRef": {
+          "name": "api-keys",
+          "key": "service-api"
+        }
+      }
+    },
+    {
+      "name": "CONFIG",
+      "valueFrom": {
+        "configMapKeyRef": {
+          "name": "app-config",
+          "key": "config.json"
+        }
+      }
+    }
+  ]
+}
+EOF
+```
+
+### Runtime Operations
+
+Examples of common runtime operations:
+
+```bash
+# List all runtimes
+curl -X GET "http://localhost:8080/api/runtimes" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+
+# Get specific runtime details
+curl -X GET "http://localhost:8080/api/runtimes/my-agent" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+
+# Restart a runtime
+curl -X POST "http://localhost:8080/api/runtimes/my-agent/restart" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+
+# Delete a runtime
+curl -X DELETE "http://localhost:8080/api/runtimes/my-agent" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+```
+
+### Error Handling Examples
+
+Examples of handling common errors:
+
+```bash
+# Missing authentication
+curl -X GET "http://localhost:8080/api/runtimes"
+# Response: {"detail":"Not authenticated"}
+
+# Invalid runtime name
+curl -X GET "http://localhost:8080/api/runtimes/non-existent" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+# Response: {"detail":"AI Agent Runtime not found: non-existent"}
+
+# Invalid configuration
+curl -X POST "http://localhost:8080/api/runtimes" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -d '{
+    "name": "invalid-agent",
+    "codeSource": {
+      "type": "unknown"
+    }
+  }'
+# Response: {"detail":"Invalid code source type: unknown"}
+```
+
+These examples demonstrate the most common use cases and patterns for working with the Management API. They can be used as templates for your own implementations.
 
 ## Environment Configuration
 
-The Management API requires certain environment variables for proper operation:
+The Management API can be configured using environment variables. Here are the available configuration options:
 
-### Database Configuration
+### API Authentication
+
+- `API_AUTH_ENABLED`: Enable/disable API authentication (default: `true`)
+- `API_AUTH_TOKEN`: The authentication token for API requests
+
+Example configuration:
 
 ```bash
-# PostgreSQL database configuration
-DATABASE_URL=postgresql://username:password@db.example.com:5432/ai_platform_db
-DB_MIN_CONNECTIONS=1
-DB_MAX_CONNECTIONS=10
+# Enable authentication and set token
+export API_AUTH_ENABLED=true
+export API_AUTH_TOKEN=your-secure-token
+
+# Or in .env file
+API_AUTH_ENABLED=true
+API_AUTH_TOKEN=your-secure-token
+```
+
+### Server Configuration
+
+- `API_HOST`: Host to bind the server to (default: `0.0.0.0`)
+- `API_PORT`: Port to listen on (default: `8080`)
+- `API_DEBUG`: Enable debug mode (default: `false`)
+
+Example configuration:
+
+```bash
+# Configure server
+export API_HOST=localhost
+export API_PORT=8080
+export API_DEBUG=true
+
+# Or in .env file
+API_HOST=localhost
+API_PORT=8080
+API_DEBUG=true
 ```
 
 ### Kubernetes Configuration
 
-```bash
-# Kubernetes configuration
-# For in-cluster deployment, these can be left empty
-# For external access, provide kubeconfig or credentials
-K8S_NAMESPACE=ai-platform
-AGENT_IMAGE=ai-platform/agent-runtime:latest
-```
+- `KUBERNETES_NAMESPACE`: Default namespace for runtime deployments (default: `default`)
+- `KUBERNETES_CONFIG_PATH`: Path to kubeconfig file (optional)
+- `KUBERNETES_CONTEXT`: Kubernetes context to use (optional)
 
-### Security Configuration
+Example configuration:
 
 ```bash
-# JWT Authentication
-JWT_SECRET_KEY=your-secret-key-here
-JWT_ALGORITHM=HS256
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
-JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
+# Configure Kubernetes settings
+export KUBERNETES_NAMESPACE=ai-agents
+export KUBERNETES_CONFIG_PATH=/path/to/kubeconfig
+export KUBERNETES_CONTEXT=my-cluster
+
+# Or in .env file
+KUBERNETES_NAMESPACE=ai-agents
+KUBERNETES_CONFIG_PATH=/path/to/kubeconfig
+KUBERNETES_CONTEXT=my-cluster
 ```
 
-## Troubleshooting
+### Resource Defaults
 
-> [!WARNING]
-> Common issues you might encounter when using the Management API and how to solve them.
+- `DEFAULT_CPU_REQUEST`: Default CPU request for runtimes (default: `100m`)
+- `DEFAULT_MEMORY_REQUEST`: Default memory request for runtimes (default: `256Mi`)
+- `DEFAULT_CPU_LIMIT`: Default CPU limit for runtimes (default: `500m`)
+- `DEFAULT_MEMORY_LIMIT`: Default memory limit for runtimes (default: `512Mi`)
 
-<details>
-<summary>Authentication Issues</summary>
+Example configuration:
 
-**Problem**: Getting 401 Unauthorized errors
+```bash
+# Configure resource defaults
+export DEFAULT_CPU_REQUEST=200m
+export DEFAULT_MEMORY_REQUEST=512Mi
+export DEFAULT_CPU_LIMIT=1000m
+export DEFAULT_MEMORY_LIMIT=1Gi
 
-**Solutions**:
+# Or in .env file
+DEFAULT_CPU_REQUEST=200m
+DEFAULT_MEMORY_REQUEST=512Mi
+DEFAULT_CPU_LIMIT=1000m
+DEFAULT_MEMORY_LIMIT=1Gi
+```
 
-- Check that your API key is valid and not expired
-- Ensure the Authorization header is formatted correctly (`Bearer your-token-here`)
-- Verify that your JWT token hasn't expired
+### Storage Configuration
 
-</details>
+- `STORAGE_CLASS`: Storage class for persistent volumes (default: `standard`)
+- `DEFAULT_STORAGE_SIZE`: Default storage size for runtimes (default: `1Gi`)
 
-<details>
-<summary>Deployment Issues</summary>
+Example configuration:
 
-**Problem**: Runtime doesn't reach Running state
+```bash
+# Configure storage settings
+export STORAGE_CLASS=fast-ssd
+export DEFAULT_STORAGE_SIZE=5Gi
 
-**Solutions**:
+# Or in .env file
+STORAGE_CLASS=fast-ssd
+DEFAULT_STORAGE_SIZE=5Gi
+```
 
-- Check runtime logs for specific errors: `GET /api/runtimes/{name}/logs`
-- Verify that your code source is accessible
-- Ensure your entrypoint file exists in the repository
-- Check resource allocation (may be too low)
-- Verify environment variables are set correctly
+### Logging Configuration
 
-</details>
+- `LOG_LEVEL`: Logging level (default: `INFO`)
+- `LOG_FORMAT`: Logging format (`json` or `text`, default: `json`)
 
-<details>
-<summary>Code Source Issues</summary>
+Example configuration:
 
-**Problem**: GitHub repository connection failures
+```bash
+# Configure logging
+export LOG_LEVEL=DEBUG
+export LOG_FORMAT=text
 
-**Solutions**:
+# Or in .env file
+LOG_LEVEL=DEBUG
+LOG_FORMAT=text
+```
 
-- For private repositories, ensure your token has correct permissions
-- Verify the repository URL and branch name
-- Check if SSH key is formatted correctly for SSH authentication
-- Ensure the repository actually contains your agent code
+### Using Environment Files
 
-</details>
+You can use a `.env` file to configure the API. Create a file named `.env` in the root directory:
 
-<details>
-<summary>Token Issues</summary>
+```bash
+# API Authentication
+API_AUTH_ENABLED=true
+API_AUTH_TOKEN=your-secure-token
 
-**Problem**: Getting 401 Unauthorized when accessing Runtime API
+# Server Configuration
+API_HOST=localhost
+API_PORT=8080
+API_DEBUG=false
 
-**Solutions**:
+# Kubernetes Configuration
+KUBERNETES_NAMESPACE=ai-agents
+KUBERNETES_CONFIG_PATH=/path/to/kubeconfig
+KUBERNETES_CONTEXT=my-cluster
 
-- Verify that the token hasn't expired
-- Check that the token was issued for the correct runtime
-- Ensure the token has the necessary permissions
-- Try requesting a new token from the Management API
-- Confirm that the runtime is in the "Running" state
+# Resource Defaults
+DEFAULT_CPU_REQUEST=200m
+DEFAULT_MEMORY_REQUEST=512Mi
+DEFAULT_CPU_LIMIT=1000m
+DEFAULT_MEMORY_LIMIT=1Gi
 
-</details>
+# Storage Configuration
+STORAGE_CLASS=fast-ssd
+DEFAULT_STORAGE_SIZE=5Gi
 
-<details>
-<summary>Network Policy Issues</summary>
+# Logging Configuration
+LOG_LEVEL=INFO
+LOG_FORMAT=json
+```
 
-**Problem**: Runtime cannot access external services
+### Docker Environment Configuration
 
-**Solutions**:
-- Check the network policy configuration for the runtime
-- Verify the allowed domains list includes all required service domains
-- Ensure proper DNS resolution is working within the cluster
-- For advanced configurations, examine the Kubernetes NetworkPolicy objects directly
-- If using `allowed_ips`, verify the CIDR notation is correct
+When running the API in Docker, you can pass environment variables using the `-e` flag or an environment file:
 
-</details>
+```bash
+# Using individual environment variables
+docker run -d \
+  -e API_AUTH_TOKEN=your-secure-token \
+  -e KUBERNETES_NAMESPACE=ai-agents \
+  -e LOG_LEVEL=INFO \
+  -p 8080:8080 \
+  ai-agent-platform/management-api
 
-## Security Best Practices
+# Using an environment file
+docker run -d \
+  --env-file .env \
+  -p 8080:8080 \
+  ai-agent-platform/management-api
+```
 
-When using the Management API, follow these security best practices:
+### Kubernetes Deployment Configuration
 
-1. **API Keys**:
-   - Rotate your API keys regularly
-   - Never commit API keys to source control
-   - Use environment variables for storing API keys
+When deploying the API to Kubernetes, you can use ConfigMaps and Secrets to manage environment variables:
 
-2. **Environment Variables**:
-   - Use secrets for sensitive environment variables
-   - Encrypt sensitive data before storing
-   - Implement least privilege access to secrets
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: management-api-config
+data:
+  API_HOST: "0.0.0.0"
+  API_PORT: "8080"
+  KUBERNETES_NAMESPACE: "ai-agents"
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: management-api-secrets
+type: Opaque
+data:
+  API_AUTH_TOKEN: <base64-encoded-token>
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: management-api
+spec:
+  template:
+    spec:
+      containers:
+      - name: management-api
+        envFrom:
+        - configMapRef:
+            name: management-api-config
+        - secretRef:
+            name: management-api-secrets
+```
 
-3. **Network Security**:
-   - Use HTTPS for all API requests
-   - Implement IP allowlisting if possible
-   - Monitor for suspicious API usage patterns
+## Security Considerations
 
-4. **Code Security**:
-   - Validate code before deployment
-   - Scan for security vulnerabilities
-   - Use secure coding practices
+When configuring the Management API, consider these security best practices:
 
-### Runtime API Token Security
+1. **API Authentication**
+   - Always enable authentication in production
+   - Use strong, randomly generated tokens
+   - Rotate tokens periodically
+   - Store tokens securely using Kubernetes secrets
 
-1. **Token Management**:
-   - Request tokens with the minimum permissions and duration needed
-   - Revoke tokens when they are no longer needed
-   - Never share tokens between different clients or services
-   - Store tokens securely (environment variables, secret managers)
+2. **Network Security**
+   - Configure TLS for production deployments
+   - Use network policies to restrict access
+   - Consider running behind a reverse proxy
 
-2. **Integration Security**:
-   - Create dedicated tokens for each integration or service
-   - Use shorter expiration times for higher-risk scenarios
-   - Implement token refresh logic for long-running processes
-   - Audit token usage regularly
+3. **Resource Limits**
+   - Set appropriate resource limits to prevent DoS
+   - Monitor resource usage
+   - Implement rate limiting for API endpoints
 
-3. **Troubleshooting**:
-   - Don't log full tokens, only truncated versions for diagnostics
-   - Rotate tokens if a security incident is suspected
-   - Monitor for unusual token usage patterns
-   - If leakage is suspected, revoke tokens immediately
+4. **Access Control**
+   - Use RBAC for Kubernetes access
+   - Limit API permissions to required resources
+   - Regularly audit access patterns
+
+5. **Logging and Monitoring**
+   - Enable appropriate logging levels
+   - Monitor API usage and errors
+   - Set up alerts for security events
+
+## Further Resources
+
+### Documentation
+
+- [FastAPI Documentation](https://fastapi.tiangolo.com/): Learn more about FastAPI, the framework used to build the Management API
+- [Kubernetes Documentation](https://kubernetes.io/docs/): Official Kubernetes documentation for understanding container orchestration
+- [OpenAPI Specification](https://swagger.io/specification/): API specification standard used by the Management API
+
+### Tools and Utilities
+
+- [kubectl](https://kubernetes.io/docs/reference/kubectl/): Command-line tool for interacting with Kubernetes clusters
+- [curl](https://curl.se/docs/): Command-line tool for making HTTP requests
+- [jq](https://stedolan.github.io/jq/): Command-line JSON processor for formatting API responses
+
+### Development Resources
+
+- [Python Package Index (PyPI)](https://pypi.org/): Find Python packages and dependencies
+- [Docker Documentation](https://docs.docker.com/): Learn about containerization and Docker
+- [Git Documentation](https://git-scm.com/doc): Version control system documentation
+
+### Security Resources
+
+- [OWASP API Security Top 10](https://owasp.org/www-project-api-security/): Best practices for API security
+- [Kubernetes Security](https://kubernetes.io/docs/concepts/security/): Security concepts in Kubernetes
+- [FastAPI Security](https://fastapi.tiangolo.com/tutorial/security/): Security features in FastAPI
+
+### Community and Support
+
+- [GitHub Repository](https://github.com/username/ai-agent-platform): Source code and issue tracking
+- [Stack Overflow](https://stackoverflow.com/questions/tagged/fastapi): Community Q&A for FastAPI
+- [Kubernetes Slack](https://kubernetes.slack.com/): Community chat for Kubernetes
+
+### Related Projects
+
+- [Helm](https://helm.sh/): Package manager for Kubernetes
+- [Prometheus](https://prometheus.io/): Monitoring and alerting toolkit
+- [Grafana](https://grafana.com/): Analytics and monitoring solution
+
+### Best Practices
+
+- [The Twelve-Factor App](https://12factor.net/): Methodology for building modern applications
+- [API Design Guide](https://cloud.google.com/apis/design): Google's API design guide
+- [Kubernetes Patterns](https://k8spatterns.io/): Common patterns for Kubernetes applications
+
+### Tutorials and Guides
+
+1. **Getting Started**
+   - [Quick Start Guide](docs/quickstart.md)
+   - [Installation Guide](docs/installation.md)
+   - [Configuration Guide](docs/configuration.md)
+
+2. **Development**
+   - [Development Setup](docs/development.md)
+   - [Contributing Guide](CONTRIBUTING.md)
+   - [Testing Guide](docs/testing.md)
+
+3. **Deployment**
+   - [Docker Deployment](docs/docker-deployment.md)
+   - [Kubernetes Deployment](docs/kubernetes-deployment.md)
+   - [Production Checklist](docs/production-checklist.md)
+
+4. **Operations**
+   - [Monitoring Guide](docs/monitoring.md)
+   - [Logging Guide](docs/logging.md)
+   - [Troubleshooting Guide](docs/troubleshooting.md)
+
+### Example Applications
+
+1. **Basic Examples**
+   - [Hello World Agent](examples/hello-world/)
+   - [OpenAI Integration](examples/openai-integration/)
+   - [File Processing Agent](examples/file-processing/)
+
+2. **Advanced Examples**
+   - [Multi-Agent System](examples/multi-agent/)
+   - [Database Integration](examples/database-integration/)
+   - [WebSocket Agent](examples/websocket-agent/)
+
+3. **Use Cases**
+   - [Content Generation](examples/content-generation/)
+   - [Data Analysis](examples/data-analysis/)
+   - [Customer Support](examples/customer-support/)
+
+### API Reference
+
+For detailed API documentation, visit:
+
+- OpenAPI UI: `http://localhost:8080/docs`
+- ReDoc UI: `http://localhost:8080/redoc`
+- OpenAPI JSON: `http://localhost:8080/openapi.json`
+
+These interactive documentation interfaces provide:
+
+- Complete API endpoint listing
+- Request/response schemas
+- Example requests and responses
+- Interactive API testing
+
+### Version History
+
+For a complete list of changes and version history, see the [CHANGELOG.md](CHANGELOG.md) file.
+
+### License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to:
+
+- Submit bug reports and feature requests
+- Set up your development environment
+- Submit pull requests
+- Follow our coding standards
+- Run tests and linting
+
+### Support
+
+If you need help or have questions:
+
+1. Check the [Documentation](docs/)
+2. Search [Issues](https://github.com/username/ai-agent-platform/issues)
+3. Join our [Community Chat](https://discord.gg/ai-agent-platform)
+4. Email support: <support@ai-agent-platform.com>
+
+### Roadmap
+
+See our [public roadmap](ROADMAP.md) for planned features and improvements.

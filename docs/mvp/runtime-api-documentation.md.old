@@ -1187,12 +1187,3 @@ When deployed as part of the AI Agent Platform, the API wrapper automatically:
 5. **Scales** based on workload requirements
 6. **Validates agent code** to ensure it meets requirements
 7. **Supports Git integration** for code deployment
-
-## Further Resources
-
-- [AI Agent Platform Documentation](../index.md)
-- [CrewAI Documentation](https://docs.crewai.com/)
-- [Management API Documentation](../management-api-documentation.md)
-- [GitHub Integration Guide](../../guides/github-integration.md)
-- [Environment Variables Guide](../../guides/environment-variables.md)
-- [HITL Implementation Guide](../../guides/hitl-implementation.md) 
