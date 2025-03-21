@@ -1,7 +1,7 @@
 # AI Agent Platform Management API
 
 > [!NOTE]
-> This documentation outlines the Management API for the AI Agent Platform, which allows AI engineers to deploy and manage their CrewAI agents on Kubernetes.
+> This documentation outlines the Management API for the AI Agent Platform, which allows AI engineers to deploy and manage CrewAI agents on Kubernetes.
 
 ## Table of Contents
 
@@ -26,7 +26,7 @@
 
 ## Overview
 
-The AI Agent Platform Management API provides a user-friendly interface for creating and managing AI Agent Runtimes. It acts as a bridge between users and the underlying Kubernetes infrastructure, translating user-friendly requests into Kubernetes Custom Resources that are processed by the platform's operator.
+The AI Agent Platform Management API provides a user-friendly interface for creating and managing AI Agent Runtimes. It translates your requests into Kubernetes resources that run your CrewAI agents and exposes them as web services.
 
 Key features:
 
@@ -34,7 +34,7 @@ Key features:
 - **Code Management**: Upload code directly or integrate with GitHub repositories
 - **Environment Management**: Configure environment variables for your agents
 - **Scalability**: Control resource allocation and replica count
-- **Operations**: Restart and monitor your deployed agents
+- **Operations**: Restart, monitor, and manage your deployed agents
 
 ## Current Implementation Status
 
@@ -147,37 +147,37 @@ curl -X POST "http://localhost:8080/api/runtimes/from-file" \
 
 ## Quick Start
 
-<details>
-<summary>Click to expand quick start instructions</summary>
+To deploy your first agent using the Management API:
 
 1. **Set up authentication**:
 
    ```bash
-   # Get your API key from the platform dashboard
+   # Save your API token to an environment variable
    export API_AUTH_TOKEN="your-auth-token-here"
    ```
 
 2. **Deploy your first agent**:
 
    ```bash
-   curl -X POST https://api.ai-agent-platform.example.com/api/runtimes \
+   curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes" \
      -H "Content-Type: application/json" \
      -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
      -d '{
        "name": "my-first-agent",
        "description": "My first CrewAI agent",
        "entrypoint": "crewai_app/orchestrator.py",
-       "code_source": {
-         "type": "github",
+       "codeSource": {
+         "type": "git",
          "gitRepo": {
            "url": "https://github.com/username/my-crewai-project",
            "branch": "main"
          }
        },
-       "env_vars": [
+       "envVars": [
          {
            "name": "OPENAI_API_KEY",
-           "value": "sk-..."
+           "value": "sk-...",
+           "secure": true
          }
        ]
      }'
@@ -186,85 +186,27 @@ curl -X POST "http://localhost:8080/api/runtimes/from-file" \
 3. **Check deployment status**:
 
    ```bash
-   curl -X GET https://api.ai-agent-platform.example.com/api/runtimes/my-first-agent \
+   curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes/my-first-agent" \
      -H "Authorization: Bearer ${API_AUTH_TOKEN}"
    ```
 
-</details>
+4. **Access your deployed agent**:
+   
+   Once deployed, your agent will be available at:
+   ```
+   https://my-first-agent.agentic.canary-orion.keboola.dev
+   ```
 
 ## Authentication
 
-The Management API uses token-based authentication. All requests must include an Authorization header with a Bearer token:
+The Management API uses token-based authentication. Include an Authorization header with a Bearer token in all requests:
 
 ```bash
-curl -X GET "http://localhost:8080/api/runtimes" \
+curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}"
 ```
 
-### Configuration
-
-The API token is configured through the environment variable `API_AUTH_TOKEN`. You can:
-
-1. Set it directly in your environment:
-
-   ```bash
-   export API_AUTH_TOKEN="your-auth-token-here"
-   ```
-
-2. Include it in your .env file:
-
-   ```bash
-   API_AUTH_TOKEN=your-auth-token-here
-   ```
-
-3. Pass it as an environment variable when running containers:
-
-   ```bash
-   docker run -e API_AUTH_TOKEN=your-auth-token-here ...
-   ```
-
-Authentication can be disabled by setting `API_AUTH_ENABLED=false` in your environment.
-
-### Examples
-
-**Creating a runtime with authentication:**
-
-```bash
-# First set your token
-export API_AUTH_TOKEN="your-auth-token-here"
-
-# Then use it in your API requests
-curl -X POST "http://localhost:8080/api/runtimes" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -d '{
-    "name": "content-agent",
-    "description": "Content generation agent",
-    "entrypoint": "crewai_app/main.py",
-    "codeSource": {
-      "type": "git",
-      "gitRepo": {
-        "url": "https://github.com/username/content-agent",
-        "branch": "main"
-      }
-    },
-    "envVars": [
-      {
-        "name": "OPENAI_API_KEY",
-        "value": "sk-..."
-      }
-    ]
-  }'
-```
-
-**File upload with authentication:**
-
-```bash
-curl -X POST "http://localhost:8080/api/runtimes/from-file" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -F "runtime_config=@runtime_config.json" \
-  -F "file=@agent_code.zip"
-```
+The API token is configured through the environment variable `API_AUTH_TOKEN`. Authentication can be disabled (not recommended for production) by setting `API_AUTH_ENABLED=false` in your environment.
 
 ## API Endpoints
 
@@ -278,7 +220,7 @@ Creates a new AI Agent Runtime deployment.
 
 **Request Parameters**:
 
-- `namespace` (optional): Kubernetes namespace (can be provided as query parameter or in request body)
+- `namespace` (optional): Kubernetes namespace (can be provided in request body)
 - `dry_run` (optional): If true, only returns the manifest without creating it (default: false)
 
 **Request Body**:
@@ -298,7 +240,8 @@ Creates a new AI Agent Runtime deployment.
   "envVars": [
     {
       "name": "OPENAI_API_KEY",
-      "value": "sk-..."
+      "value": "sk-...",
+      "secure": true
     }
   ],
   "replicas": 1,
@@ -321,7 +264,7 @@ Creates a new AI Agent Runtime deployment.
 **Example**:
 
 ```bash
-curl -X POST "http://localhost:8080/api/runtimes" \
+curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
   -d '{
@@ -338,10 +281,22 @@ curl -X POST "http://localhost:8080/api/runtimes" \
     "envVars": [
       {
         "name": "OPENAI_API_KEY",
-        "value": "sk-..."
+        "value": "sk-...",
+        "secure": true
       }
     ]
   }'
+```
+
+**Response**:
+
+```json
+{
+  "name": "content-agent",
+  "url": "https://content-agent.agentic.canary-orion.keboola.dev",
+  "status": "creating",
+  "message": "AI Agent Runtime created successfully"
+}
 ```
 
 #### List All Runtimes
@@ -358,12 +313,29 @@ Lists all AI Agent Runtimes in the specified namespace.
 
 ```bash
 # List all runtimes
-curl -X GET "http://localhost:8080/api/runtimes" \
+curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+```
 
-# List runtimes in specific namespace
-curl -X GET "http://localhost:8080/api/runtimes?namespace=my-namespace" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+**Response**:
+
+```json
+{
+  "runtimes": [
+    {
+      "name": "content-agent",
+      "status": "running",
+      "url": "https://content-agent.agentic.canary-orion.keboola.dev",
+      "created_at": "2023-06-15T12:34:56Z"
+    },
+    {
+      "name": "research-agent",
+      "status": "running",
+      "url": "https://research-agent.agentic.canary-orion.keboola.dev",
+      "created_at": "2023-06-14T10:22:45Z"
+    }
+  ]
+}
 ```
 
 #### Get Runtime Details
@@ -378,13 +350,56 @@ Gets details of a specific AI Agent Runtime.
 
 **Query Parameters**:
 
-- `namespace` (optional): Kubernetes namespace (can be provided as query parameter or in request body)
+- `namespace` (optional): Kubernetes namespace
 
 **Example**:
 
 ```bash
-curl -X GET "http://localhost:8080/api/runtimes/content-agent" \
+curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes/content-agent" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+```
+
+**Response**:
+
+```json
+{
+  "name": "content-agent",
+  "description": "Content generation agent",
+  "url": "https://content-agent.agentic.canary-orion.keboola.dev",
+  "status": "running",
+  "entrypoint": "crewai_app/main.py",
+  "codeSource": {
+    "type": "git",
+    "gitRepo": {
+      "url": "https://github.com/username/content-agent",
+      "branch": "main"
+    }
+  },
+  "envVars": [
+    {
+      "name": "OPENAI_API_KEY",
+      "secure": true
+    },
+    {
+      "name": "LOG_LEVEL",
+      "value": "INFO",
+      "secure": false
+    }
+  ],
+  "replicas": 1,
+  "resources": {
+    "limits": {
+      "cpu": "1",
+      "memory": "1Gi"
+    },
+    "requests": {
+      "cpu": "500m",
+      "memory": "512Mi"
+    }
+  },
+  "created_at": "2023-06-15T12:34:56Z",
+  "updated_at": "2023-06-15T12:40:22Z"
+}
 ```
 
 #### Delete Runtime
@@ -399,13 +414,21 @@ Deletes a specific AI Agent Runtime.
 
 **Query Parameters**:
 
-- `namespace` (optional): Kubernetes namespace (can be provided as query parameter or in request body)
+- `namespace` (optional): Kubernetes namespace
 
 **Example**:
 
 ```bash
-curl -X DELETE "http://localhost:8080/api/runtimes/content-agent" \
+curl -X DELETE "https://agentic.canary-orion.keboola.dev/api/runtimes/content-agent" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+```
+
+**Response**:
+
+```json
+{
+  "message": "AI Agent Runtime 'content-agent' deleted successfully"
+}
 ```
 
 #### Restart Runtime
@@ -420,13 +443,21 @@ Restarts a specific AI Agent Runtime.
 
 **Query Parameters**:
 
-- `namespace` (optional): Kubernetes namespace (can be provided as query parameter or in request body)
+- `namespace` (optional): Kubernetes namespace
 
 **Example**:
 
 ```bash
-curl -X POST "http://localhost:8080/api/runtimes/content-agent/restart" \
+curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/content-agent/restart" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+```
+
+**Response**:
+
+```json
+{
+  "message": "AI Agent Runtime 'content-agent' restarted successfully"
+}
 ```
 
 #### Create Runtime from File
@@ -443,13 +474,13 @@ Creates a new AI Agent Runtime using an uploaded code file (ZIP archive) and a r
 **Example**:
 
 ```bash
-curl -X POST "http://localhost:8080/api/runtimes/from-file" \
+curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
   -F "runtime_config=@runtime_config.json" \
   -F "file=@agent_code.zip"
 ```
 
-Example `runtime_config.json`:
+Where `runtime_config.json` contains:
 
 ```json
 {
@@ -462,7 +493,8 @@ Example `runtime_config.json`:
   "envVars": [
     {
       "name": "OPENAI_API_KEY",
-      "value": "sk-..."
+      "value": "sk-...",
+      "secure": true
     },
     {
       "name": "DEBUG",
@@ -473,33 +505,33 @@ Example `runtime_config.json`:
 }
 ```
 
-### Environment Variables
-
-Environment variables can be configured when creating or updating a runtime. They can be specified in two ways:
-
-1. As part of the runtime creation request
-2. Through Kubernetes secrets or configmaps
-
-#### Environment Variable Configuration
-
-When creating a runtime, you can specify environment variables in the request body:
+**Response**:
 
 ```json
 {
-  "name": "my-agent",
-  "description": "My agent with environment variables",
-  "entrypoint": "main.py",
-  "codeSource": {
-    "type": "git",
-    "gitRepo": {
-      "url": "https://github.com/username/my-agent",
-      "branch": "main"
-    }
-  },
+  "name": "file-upload-agent",
+  "url": "https://file-upload-agent.agentic.canary-orion.keboola.dev",
+  "status": "creating",
+  "message": "AI Agent Runtime created successfully from file upload"
+}
+```
+
+### Environment Variables
+
+Environment variables can be configured when creating or updating a runtime in two ways:
+
+1. Direct values in the runtime creation request
+2. References to Kubernetes secrets or configmaps
+
+#### Direct Environment Variables
+
+```json
+{
   "envVars": [
     {
       "name": "OPENAI_API_KEY",
-      "value": "sk-..."
+      "value": "sk-...",
+      "secure": true
     },
     {
       "name": "DEBUG",
@@ -509,9 +541,11 @@ When creating a runtime, you can specify environment variables in the request bo
 }
 ```
 
+The `secure` flag (default: `false`) stores the variable in a Kubernetes Secret instead of directly in the deployment.
+
 #### Using Kubernetes Secrets and ConfigMaps
 
-For sensitive data, you can reference Kubernetes secrets:
+For sensitive data, reference existing Kubernetes secrets:
 
 ```json
 {
@@ -587,49 +621,7 @@ For private repositories, include authentication:
 
 #### File Upload
 
-Upload code directly using the `/api/runtimes/from-file` endpoint:
-
-```bash
-# Create runtime_config.json
-cat > runtime_config.json << EOF
-{
-  "name": "file-upload-agent",
-  "description": "Agent using file upload",
-  "entrypoint": "main.py",
-  "codeSource": {
-    "type": "inline"
-  },
-  "envVars": [
-    {
-      "name": "OPENAI_API_KEY",
-      "value": "sk-..."
-    }
-  ]
-}
-EOF
-
-# Zip your code
-zip -r agent_code.zip your_agent_directory/
-
-# Upload code and configuration
-curl -X POST "http://localhost:8080/api/runtimes/from-file" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -F "runtime_config=@runtime_config.json" \
-  -F "file=@agent_code.zip"
-```
-
-#### ConfigMap
-
-Use an existing Kubernetes ConfigMap as the code source:
-
-```json
-{
-  "codeSource": {
-    "type": "configmap",
-    "configMapName": "my-agent-code"
-  }
-}
-```
+Upload code directly using the `/api/runtimes/from-file` endpoint as shown [earlier](#create-runtime-from-file).
 
 ### Runtime Operations
 
@@ -640,7 +632,7 @@ The following operations are available for managing AI Agent Runtimes:
 Restart a runtime to apply configuration changes or recover from errors:
 
 ```bash
-curl -X POST "http://localhost:8080/api/runtimes/my-agent/restart" \
+curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/my-agent/restart" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}"
 ```
 
@@ -649,7 +641,7 @@ curl -X POST "http://localhost:8080/api/runtimes/my-agent/restart" \
 Remove a runtime and all associated resources:
 
 ```bash
-curl -X DELETE "http://localhost:8080/api/runtimes/my-agent" \
+curl -X DELETE "https://agentic.canary-orion.keboola.dev/api/runtimes/my-agent" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}"
 ```
 
@@ -658,104 +650,45 @@ curl -X DELETE "http://localhost:8080/api/runtimes/my-agent" \
 Check the current status of a runtime:
 
 ```bash
-curl -X GET "http://localhost:8080/api/runtimes/my-agent" \
+curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes/my-agent" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}"
 ```
 
-The response includes:
+## Request and Response Models
 
-- Runtime phase (Pending, Running, Failed, etc.)
-- Status message
-- Last transition time
-- Pod and service status
+### Runtime Creation Model
 
-### Error Handling
+| Field | Type | Description | Required |
+|-------|------|-------------|----------|
+| `name` | string | Name of the AI Agent Runtime (must be DNS-compliant) | Yes |
+| `description` | string | Description of the AI Agent Runtime | No |
+| `entrypoint` | string | Path to the entry Python file | Yes |
+| `codeSource` | object | Configuration for the source of the code | Yes |
+| `envVars` | array | Environment variables for the AI agent | No |
+| `resources` | object | CPU and memory resource requirements | No |
+| `replicas` | integer | Number of replicas (default: 1) | No |
+| `dbConfig` | object | Database configuration for the agent | No |
 
-The API uses standard HTTP status codes and provides detailed error messages:
+### Code Source Models
 
-- `400 Bad Request`: Invalid request parameters or body
-- `401 Unauthorized`: Missing or invalid API token
-- `404 Not Found`: Runtime or resource not found
-- `500 Internal Server Error`: Server-side error
+#### Git Repository Source
 
-Example error response:
+| Field | Type | Description | Required |
+|-------|------|-------------|----------|
+| `type` | string | Must be "git" | Yes |
+| `gitRepo.url` | string | URL of the Git repository | Yes |
+| `gitRepo.branch` | string | Branch to checkout (default: "main") | No |
+| `gitRepo.auth` | object | Authentication configuration | No |
 
-```json
-{
-  "detail": "Failed to create AI Agent Runtime: Invalid configuration"
-}
-```
+#### Inline Source (File Upload)
 
-Common error scenarios:
-
-1. **Authentication Errors**
-
-   ```bash
-   # Missing token
-   curl -X GET "http://localhost:8080/api/runtimes"
-   # Response: {"detail":"Not authenticated"}
-
-   # Invalid token
-   curl -X GET "http://localhost:8080/api/runtimes" \
-     -H "Authorization: Bearer invalid-token"
-   # Response: {"detail":"Invalid authentication credentials"}
-   ```
-
-2. **Resource Not Found**
-
-   ```bash
-   curl -X GET "http://localhost:8080/api/runtimes/non-existent" \
-     -H "Authorization: Bearer ${API_AUTH_TOKEN}"
-   # Response: {"detail":"AI Agent Runtime not found: non-existent"}
-   ```
-
-3. **Invalid Configuration**
-
-   ```bash
-   curl -X POST "http://localhost:8080/api/runtimes" \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-     -d '{
-       "name": "invalid-agent",
-       "codeSource": {
-         "type": "unknown"
-       }
-     }'
-   # Response: {"detail":"Invalid code source type: unknown"}
-   ```
-
-### Best Practices
-
-1. **Authentication**
-   - Store API tokens securely
-   - Rotate tokens periodically
-   - Use environment variables for token storage
-
-2. **Environment Variables**
-   - Use Kubernetes secrets for sensitive data
-   - Use ConfigMaps for non-sensitive configuration
-   - Follow the principle of least privilege
-
-3. **Code Management**
-   - Use version control (Git) for production deployments
-   - Keep code archives small and focused
-   - Include only necessary files in uploads
-
-4. **Error Handling**
-   - Implement proper error handling in your code
-   - Check API responses for error messages
-   - Use appropriate HTTP status codes
-
-5. **Resource Management**
-   - Set appropriate resource limits
-   - Monitor resource usage
-   - Clean up unused runtimes
+| Field | Type | Description | Required |
+|-------|------|-------------|----------|
+| `type` | string | Must be "inline" | Yes |
 
 ## Implementation Examples
 
 ### Creating a Simple Runtime
-
-Here's an example of creating a basic AI Agent Runtime:
 
 ```bash
 # Create runtime configuration
@@ -774,12 +707,8 @@ cat > runtime_config.json << EOF
   "envVars": [
     {
       "name": "OPENAI_API_KEY",
-      "valueFrom": {
-        "secretKeyRef": {
-          "name": "api-keys",
-          "key": "openai"
-        }
-      }
+      "value": "sk-...",
+      "secure": true
     }
   ],
   "resources": {
@@ -796,15 +725,13 @@ cat > runtime_config.json << EOF
 EOF
 
 # Create the runtime
-curl -X POST "http://localhost:8080/api/runtimes" \
+curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
   -d @runtime_config.json
 ```
 
 ### File Upload Deployment
-
-Example of deploying an agent using file upload:
 
 ```bash
 # Create a simple agent
@@ -841,7 +768,8 @@ cat > runtime_config.json << EOF
   "envVars": [
     {
       "name": "OPENAI_API_KEY",
-      "value": "sk-..."
+      "value": "sk-...",
+      "secure": true
     }
   ]
 }
@@ -851,192 +779,20 @@ EOF
 zip -r agent_code.zip my-agent/
 
 # Upload code and configuration
-curl -X POST "http://localhost:8080/api/runtimes/from-file" \
+curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
   -F "runtime_config=@runtime_config.json" \
   -F "file=@agent_code.zip"
 ```
 
-### Using Git Repository with Authentication
-
-Example of creating a runtime using a private Git repository:
-
-```bash
-cat > runtime_config.json << EOF
-{
-  "name": "git-agent",
-  "description": "Agent from private Git repo",
-  "entrypoint": "src/main.py",
-  "codeSource": {
-    "type": "git",
-    "gitRepo": {
-      "url": "https://github.com/username/private-agent",
-      "branch": "main",
-      "auth": {
-        "type": "token",
-        "token": "github_pat_..."
-      }
-    }
-  },
-  "envVars": [
-    {
-      "name": "OPENAI_API_KEY",
-      "valueFrom": {
-        "secretKeyRef": {
-          "name": "api-keys",
-          "key": "openai"
-        }
-      }
-    }
-  ]
-}
-EOF
-
-curl -X POST "http://localhost:8080/api/runtimes" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -d @runtime_config.json
-```
-
-### Managing Environment Variables
-
-Example of using different types of environment variables:
-
-```bash
-# Using direct values
-cat > runtime_config.json << EOF
-{
-  "name": "env-agent",
-  "description": "Agent with various env vars",
-  "entrypoint": "main.py",
-  "codeSource": {
-    "type": "git",
-    "gitRepo": {
-      "url": "https://github.com/username/env-agent",
-      "branch": "main"
-    }
-  },
-  "envVars": [
-    {
-      "name": "DEBUG",
-      "value": "true"
-    },
-    {
-      "name": "LOG_LEVEL",
-      "value": "INFO"
-    }
-  ]
-}
-EOF
-
-# Using Kubernetes secrets and configmaps
-cat > runtime_config.json << EOF
-{
-  "name": "secure-agent",
-  "description": "Agent with secure env vars",
-  "entrypoint": "main.py",
-  "codeSource": {
-    "type": "git",
-    "gitRepo": {
-      "url": "https://github.com/username/secure-agent",
-      "branch": "main"
-    }
-  },
-  "envVars": [
-    {
-      "name": "API_KEY",
-      "valueFrom": {
-        "secretKeyRef": {
-          "name": "api-keys",
-          "key": "service-api"
-        }
-      }
-    },
-    {
-      "name": "CONFIG",
-      "valueFrom": {
-        "configMapKeyRef": {
-          "name": "app-config",
-          "key": "config.json"
-        }
-      }
-    }
-  ]
-}
-EOF
-```
-
-### Runtime Operations
-
-Examples of common runtime operations:
-
-```bash
-# List all runtimes
-curl -X GET "http://localhost:8080/api/runtimes" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
-
-# Get specific runtime details
-curl -X GET "http://localhost:8080/api/runtimes/my-agent" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
-
-# Restart a runtime
-curl -X POST "http://localhost:8080/api/runtimes/my-agent/restart" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
-
-# Delete a runtime
-curl -X DELETE "http://localhost:8080/api/runtimes/my-agent" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
-```
-
-### Error Handling Examples
-
-Examples of handling common errors:
-
-```bash
-# Missing authentication
-curl -X GET "http://localhost:8080/api/runtimes"
-# Response: {"detail":"Not authenticated"}
-
-# Invalid runtime name
-curl -X GET "http://localhost:8080/api/runtimes/non-existent" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}"
-# Response: {"detail":"AI Agent Runtime not found: non-existent"}
-
-# Invalid configuration
-curl -X POST "http://localhost:8080/api/runtimes" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -d '{
-    "name": "invalid-agent",
-    "codeSource": {
-      "type": "unknown"
-    }
-  }'
-# Response: {"detail":"Invalid code source type: unknown"}
-```
-
-These examples demonstrate the most common use cases and patterns for working with the Management API. They can be used as templates for your own implementations.
-
 ## Environment Configuration
 
-The Management API can be configured using environment variables. Here are the available configuration options:
+The Management API can be configured using environment variables:
 
 ### API Authentication
 
 - `API_AUTH_ENABLED`: Enable/disable API authentication (default: `true`)
 - `API_AUTH_TOKEN`: The authentication token for API requests
-
-Example configuration:
-
-```bash
-# Enable authentication and set token
-export API_AUTH_ENABLED=true
-export API_AUTH_TOKEN=your-secure-token
-
-# Or in .env file
-API_AUTH_ENABLED=true
-API_AUTH_TOKEN=your-secure-token
-```
 
 ### Server Configuration
 
@@ -1044,39 +800,11 @@ API_AUTH_TOKEN=your-secure-token
 - `API_PORT`: Port to listen on (default: `8080`)
 - `API_DEBUG`: Enable debug mode (default: `false`)
 
-Example configuration:
-
-```bash
-# Configure server
-export API_HOST=localhost
-export API_PORT=8080
-export API_DEBUG=true
-
-# Or in .env file
-API_HOST=localhost
-API_PORT=8080
-API_DEBUG=true
-```
-
 ### Kubernetes Configuration
 
 - `KUBERNETES_NAMESPACE`: Default namespace for runtime deployments (default: `default`)
 - `KUBERNETES_CONFIG_PATH`: Path to kubeconfig file (optional)
 - `KUBERNETES_CONTEXT`: Kubernetes context to use (optional)
-
-Example configuration:
-
-```bash
-# Configure Kubernetes settings
-export KUBERNETES_NAMESPACE=ai-agents
-export KUBERNETES_CONFIG_PATH=/path/to/kubeconfig
-export KUBERNETES_CONTEXT=my-cluster
-
-# Or in .env file
-KUBERNETES_NAMESPACE=ai-agents
-KUBERNETES_CONFIG_PATH=/path/to/kubeconfig
-KUBERNETES_CONTEXT=my-cluster
-```
 
 ### Resource Defaults
 
@@ -1085,179 +813,82 @@ KUBERNETES_CONTEXT=my-cluster
 - `DEFAULT_CPU_LIMIT`: Default CPU limit for runtimes (default: `500m`)
 - `DEFAULT_MEMORY_LIMIT`: Default memory limit for runtimes (default: `512Mi`)
 
-Example configuration:
+## Troubleshooting
 
-```bash
-# Configure resource defaults
-export DEFAULT_CPU_REQUEST=200m
-export DEFAULT_MEMORY_REQUEST=512Mi
-export DEFAULT_CPU_LIMIT=1000m
-export DEFAULT_MEMORY_LIMIT=1Gi
+### Common Errors
 
-# Or in .env file
-DEFAULT_CPU_REQUEST=200m
-DEFAULT_MEMORY_REQUEST=512Mi
-DEFAULT_CPU_LIMIT=1000m
-DEFAULT_MEMORY_LIMIT=1Gi
-```
+1. **Authentication Errors**
 
-### Storage Configuration
+   ```bash
+   # Missing token
+   curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes"
+   # Response: {"detail":"Not authenticated"}
 
-- `STORAGE_CLASS`: Storage class for persistent volumes (default: `standard`)
-- `DEFAULT_STORAGE_SIZE`: Default storage size for runtimes (default: `1Gi`)
+   # Invalid token
+   curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes" \
+     -H "Authorization: Bearer invalid-token"
+   # Response: {"detail":"Invalid authentication credentials"}
+   ```
 
-Example configuration:
+2. **Resource Not Found**
 
-```bash
-# Configure storage settings
-export STORAGE_CLASS=fast-ssd
-export DEFAULT_STORAGE_SIZE=5Gi
+   ```bash
+   curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes/non-existent" \
+     -H "Authorization: Bearer ${API_AUTH_TOKEN}"
+   # Response: {"detail":"AI Agent Runtime not found: non-existent"}
+   ```
 
-# Or in .env file
-STORAGE_CLASS=fast-ssd
-DEFAULT_STORAGE_SIZE=5Gi
-```
+3. **Invalid Configuration**
 
-### Logging Configuration
+   ```bash
+   curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+     -d '{
+       "name": "invalid-agent",
+       "codeSource": {
+         "type": "unknown"
+       }
+     }'
+   # Response: {"detail":"Invalid code source type: unknown"}
+   ```
 
-- `LOG_LEVEL`: Logging level (default: `INFO`)
-- `LOG_FORMAT`: Logging format (`json` or `text`, default: `json`)
+### Troubleshooting Tips
 
-Example configuration:
+1. **Check logs**:
+   - Look at the management API logs for detailed error information
+   - Check Kubernetes logs if the runtime is stuck in a pending state
 
-```bash
-# Configure logging
-export LOG_LEVEL=DEBUG
-export LOG_FORMAT=text
+2. **Resource availability**:
+   - Ensure your cluster has enough resources for the requested CPU/memory
+   - Verify that storage is available for your deployments
 
-# Or in .env file
-LOG_LEVEL=DEBUG
-LOG_FORMAT=text
-```
+3. **Network issues**:
+   - If the runtime URL is not accessible, check network policies
+   - Verify that your DNS and ingress configurations are correct
 
-### Using Environment Files
-
-You can use a `.env` file to configure the API. Create a file named `.env` in the root directory:
-
-```bash
-# API Authentication
-API_AUTH_ENABLED=true
-API_AUTH_TOKEN=your-secure-token
-
-# Server Configuration
-API_HOST=localhost
-API_PORT=8080
-API_DEBUG=false
-
-# Kubernetes Configuration
-KUBERNETES_NAMESPACE=ai-agents
-KUBERNETES_CONFIG_PATH=/path/to/kubeconfig
-KUBERNETES_CONTEXT=my-cluster
-
-# Resource Defaults
-DEFAULT_CPU_REQUEST=200m
-DEFAULT_MEMORY_REQUEST=512Mi
-DEFAULT_CPU_LIMIT=1000m
-DEFAULT_MEMORY_LIMIT=1Gi
-
-# Storage Configuration
-STORAGE_CLASS=fast-ssd
-DEFAULT_STORAGE_SIZE=5Gi
-
-# Logging Configuration
-LOG_LEVEL=INFO
-LOG_FORMAT=json
-```
-
-### Docker Environment Configuration
-
-When running the API in Docker, you can pass environment variables using the `-e` flag or an environment file:
-
-```bash
-# Using individual environment variables
-docker run -d \
-  -e API_AUTH_TOKEN=your-secure-token \
-  -e KUBERNETES_NAMESPACE=ai-agents \
-  -e LOG_LEVEL=INFO \
-  -p 8080:8080 \
-  ai-agent-platform/management-api
-
-# Using an environment file
-docker run -d \
-  --env-file .env \
-  -p 8080:8080 \
-  ai-agent-platform/management-api
-```
-
-### Kubernetes Deployment Configuration
-
-When deploying the API to Kubernetes, you can use ConfigMaps and Secrets to manage environment variables:
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: management-api-config
-data:
-  API_HOST: "0.0.0.0"
-  API_PORT: "8080"
-  KUBERNETES_NAMESPACE: "ai-agents"
-  LOG_LEVEL: "INFO"
-  LOG_FORMAT: "json"
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: management-api-secrets
-type: Opaque
-data:
-  API_AUTH_TOKEN: <base64-encoded-token>
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: management-api
-spec:
-  template:
-    spec:
-      containers:
-      - name: management-api
-        envFrom:
-        - configMapRef:
-            name: management-api-config
-        - secretRef:
-            name: management-api-secrets
-```
-
-## Security Considerations
-
-When configuring the Management API, consider these security best practices:
+## Security Best Practices
 
 1. **API Authentication**
    - Always enable authentication in production
    - Use strong, randomly generated tokens
    - Rotate tokens periodically
-   - Store tokens securely using Kubernetes secrets
+   - Store tokens securely
 
-2. **Network Security**
-   - Configure TLS for production deployments
-   - Use network policies to restrict access
-   - Consider running behind a reverse proxy
+2. **Environment Variables**
+   - Use `secure: true` for all sensitive data
+   - Do not commit API keys or secrets to source code repositories
+   - Consider using external secret management solutions
 
 3. **Resource Limits**
-   - Set appropriate resource limits to prevent DoS
-   - Monitor resource usage
-   - Implement rate limiting for API endpoints
+   - Always set appropriate resource limits to prevent DoS
+   - Monitor resource usage regularly
+   - Start with conservative limits and increase as needed
 
-4. **Access Control**
-   - Use RBAC for Kubernetes access
-   - Limit API permissions to required resources
-   - Regularly audit access patterns
-
-5. **Logging and Monitoring**
-   - Enable appropriate logging levels
-   - Monitor API usage and errors
-   - Set up alerts for security events
+4. **Code Security**
+   - Validate all input files before uploading
+   - Use trusted repositories for code sources
+   - Regularly check for and update dependencies with security issues
 
 ## Further Resources
 
@@ -1356,34 +987,3 @@ These interactive documentation interfaces provide:
 - Request/response schemas
 - Example requests and responses
 - Interactive API testing
-
-### Version History
-
-For a complete list of changes and version history, see the [CHANGELOG.md](CHANGELOG.md) file.
-
-### License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-### Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to:
-
-- Submit bug reports and feature requests
-- Set up your development environment
-- Submit pull requests
-- Follow our coding standards
-- Run tests and linting
-
-### Support
-
-If you need help or have questions:
-
-1. Check the [Documentation](docs/)
-2. Search [Issues](https://github.com/username/ai-agent-platform/issues)
-3. Join our [Community Chat](https://discord.gg/ai-agent-platform)
-4. Email support: <support@ai-agent-platform.com>
-
-### Roadmap
-
-See our [public roadmap](ROADMAP.md) for planned features and improvements.
