@@ -42,9 +42,9 @@ curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes?dry_run=true
   }'
 ```
 
-### 2. Create a Runtime on the Cluster
+### 2. Create a Runtime
 
-Create and deploy an AI Agent Runtime:
+Create a runtime:
 
 ```bash
 curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes" \
@@ -80,37 +80,9 @@ Response:
 }
 ```
 
-### 3. Create a Runtime in a Specific Namespace
+### 3. Get a List of Runtimes
 
-Create a runtime in a specific namespace:
-
-```bash
-curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -d '{
-    "namespace": "foobar",
-    "name": "curl-demo-runtime",
-    "description": "Demo runtime created via curl",
-    "entrypoint": "orchestrator.py",
-    "codeSource": {
-      "type": "git",
-      "gitRepo": {
-        "url": "https://github.com/keboola/crewai_demo.git",
-        "branch": "main"
-      }
-    },
-    "envVars": [
-      {"name": "OPENAI_API_KEY", "value": "sk-your-key-here", "secure": true},
-      {"name": "LOG_LEVEL", "value": "INFO"}
-    ],
-    "replicas": 1
-  }'
-```
-
-### 4. Get a List of Runtimes
-
-Retrieve all runtimes from the default namespace:
+Retrieve all runtimes in the Management API's namespace:
 
 ```bash
 curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes" \
@@ -138,22 +110,9 @@ Response:
 }
 ```
 
-### 5. Get a List of Runtimes from a Specific Namespace
+### 4. Get a Runtime by Name
 
-Retrieve all runtimes from a specific namespace:
-
-```bash
-curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -d '{
-    "namespace": "foobar"
-  }'
-```
-
-### 6. Get a Specific Runtime
-
-Retrieve a specific runtime by name from the default namespace:
+Retrieve a specific runtime by name:
 
 ```bash
 curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes/curl-demo-runtime" \
@@ -203,22 +162,9 @@ Response:
 }
 ```
 
-### 7. Get a Runtime from a Specific Namespace
+### 5. Delete a Runtime
 
-Retrieve a runtime from a specific namespace:
-
-```bash
-curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes/curl-demo-runtime" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -d '{
-    "namespace": "foobar"
-  }'
-```
-
-### 8. Delete a Runtime
-
-Delete a runtime from the default namespace:
+Delete a runtime:
 
 ```bash
 curl -X DELETE "https://agentic.canary-orion.keboola.dev/api/runtimes/curl-demo-runtime" \
@@ -233,22 +179,9 @@ Response:
 }
 ```
 
-### 9. Delete a Runtime from a Specific Namespace
+### 6. Restart a Runtime
 
-Delete a runtime from a specific namespace:
-
-```bash
-curl -X DELETE "https://agentic.canary-orion.keboola.dev/api/runtimes/curl-demo-runtime" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -d '{
-    "namespace": "foobar"
-  }'
-```
-
-### 10. Restart a Runtime
-
-Restart a runtime in the default namespace:
+Restart a runtime:
 
 ```bash
 curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/curl-demo-runtime/restart" \
@@ -265,7 +198,7 @@ Response:
 
 ## Advanced Configuration Examples
 
-### 11. Create a Runtime with Advanced Options
+### 7. Create a Runtime with Advanced Options
 
 Create a runtime with more configuration options in the default namespace:
 
@@ -308,9 +241,9 @@ curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes" \
   }'
 ```
 
-### 12. Create a Runtime with File Upload
+### 8. Create a Runtime with File Upload
 
-Create a runtime from a ZIP file containing your code:
+Create a runtime from a ZIP file containing your code. You can provide the runtime configuration in multiple ways:
 
 ```bash
 # First, create a runtime configuration JSON file
@@ -330,11 +263,34 @@ cat > runtime_config.json << EOF
 }
 EOF
 
-# Then upload the file and configuration
+# Method 1: Using $(cat) to pass the JSON as a string
 curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -F "runtime_config=@runtime_config.json" \
+  -F "runtime_config=$(cat runtime_config.json)" \
   -F "file=@agent_code.zip"
+
+# Method 2: Uploading the config as a separate file
+curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -F "runtime_config_file=@runtime_config.json" \
+  -F "file=@agent_code.zip"
+
+# Method 3: Using direct JSON in the request body
+curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
+  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@agent_code.zip" \
+  --data-raw '{
+    "name": "file-upload-runtime",
+    "description": "Runtime created from file upload",
+    "entrypoint": "main.py",
+    "codeSource": {"type": "inline"},
+    "envVars": [
+      {"name": "OPENAI_API_KEY", "value": "sk-your-key-here", "secure": true},
+      {"name": "DEBUG", "value": "true"}
+    ],
+    "replicas": 1
+  }'
 ```
 
 Response:
@@ -365,49 +321,32 @@ The API expects payloads with the following structure:
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
-| `namespace` | string | Kubernetes namespace to use | No |
-| `name` | string | Name of the AI Agent Runtime | Yes |
-| `description` | string | Description of the AI Agent Runtime | No |
-| `entrypoint` | string | Path to the entry Python file | Yes |
-| `codeSource` | object | Configuration for the source of the code | Yes |
-| `envVars` | array | Environment variables for the AI agent | No |
-| `resources` | object | CPU and memory resource requirements | No |
-| `replicas` | integer | Number of replicas (default: 1) | No |
+| `name` | string | Name of the runtime | Yes |
+| `description` | string | Description of the runtime | No |
+| `entrypoint` | string | Entrypoint file for the agent code | Yes |
+| `codeSource` | object | Code source configuration | Yes |
+| `codeSource.type` | string | Type of code source (git, configmap, inline) | Yes |
+| `codeSource.gitRepo` | object | Git repository configuration | No* |
+| `codeSource.gitRepo.url` | string | URL of the Git repository | Yes** |
+| `codeSource.gitRepo.branch` | string | Branch to clone (default: "main") | No |
+| `codeSource.gitRepo.auth` | object | Authentication configuration | No |
+| `envVars` | array | Environment variables for the runtime | No |
+| `envVars[].name` | string | Name of the environment variable | Yes*** |
+| `envVars[].value` | string | Value of the environment variable | No |
+| `envVars[].secure` | boolean | Whether the variable should be stored securely | No |
+| `replicas` | integer | Number of replicas to deploy | No |
+| `resources` | object | Resource limits and requests | No |
+| `dbConfig` | object | Database configuration | No |
 
-### codeSource Object Structure
+\* Required when `codeSource.type` is "git"  
+\** Required when `codeSource.gitRepo` is provided  
+\*** Required for each environment variable object
 
-| Field | Type | Description | Required |
-|-------|------|-------------|----------|
-| `type` | string | Source type: `git` or `inline` | Yes |
-| `gitRepo` | object | Git repository configuration (when type is `git`) | No* |
+## Notes:
 
-\* Required when type is "git"
+- The API operations only affect resources in the Management API's namespace
+- Authentication is required for all endpoints
+- API paths are prefixed with `/api`
+- The API always returns JSON responses with appropriate HTTP status codes
+- The default format for all dates and times is ISO 8601 (e.g., `2023-06-15T12:34:56Z`)
 
-### gitRepo Object Structure
-
-| Field | Type | Description | Required |
-|-------|------|-------------|----------|
-| `url` | string | URL of the Git repository | Yes |
-| `branch` | string | Branch to checkout (default: `main`) | No |
-| `auth` | object | Authentication configuration | No |
-
-### envVars Array Structure
-
-Each item in the array has the following structure:
-
-| Field | Type | Description | Required |
-|-------|------|-------------|----------|
-| `name` | string | Name of the environment variable | Yes |
-| `value` | string | Value of the environment variable | No* |
-| `secure` | boolean | Whether to store the variable securely in a Secret | No |
-| `valueFrom` | object | Reference to a Kubernetes Secret or ConfigMap | No* |
-
-\* Either `value` or `valueFrom` must be provided
-
-## Notes
-
-- Field names use camelCase formatting (e.g., `codeSource`, not `code_source`)
-- The API uses standard HTTP status codes to indicate success or failure
-- Secure environment variables (marked with `secure: true`) are stored in Kubernetes Secrets
-- By default, the API uses the default namespace configured in the Management API service
-- For secure operations in production, always use HTTPS and proper authentication

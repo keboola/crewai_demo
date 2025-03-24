@@ -191,11 +191,32 @@ To deploy your first agent using the Management API:
    ```
 
 4. **Access your deployed agent**:
-   
-   Once deployed, your agent will be available at:
+
+   When using ingress (with RUNTIME_INGRESS_DOMAIN configured), your agent will be available at:
+
    ```
    https://my-first-agent.agentic.canary-orion.keboola.dev
    ```
+
+   For local development without ingress, use port-forwarding:
+
+   ```bash
+   kubectl port-forward svc/my-first-agent 8000:80
+   ```
+
+   Then access your agent at `http://localhost:8000`
+
+   For local development WITH ingress support, you can use Traefik with nip.io or traefik.me:
+
+   ```bash
+   # Configure RUNTIME_INGRESS_DOMAIN using your local IP with nip.io
+   export RUNTIME_INGRESS_DOMAIN="192.168.1.100.nip.io"
+   
+   # Or use traefik.me which automatically resolves to 127.0.0.1
+   export RUNTIME_INGRESS_DOMAIN="traefik.me"
+   ```
+
+   Then access your agent at `http://my-first-agent.traefik.me` or `http://my-first-agent.192.168.1.100.nip.io`
 
 ## Authentication
 
@@ -293,21 +314,37 @@ curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes" \
 ```json
 {
   "name": "content-agent",
-  "url": "https://content-agent.agentic.canary-orion.keboola.dev",
-  "status": "creating",
-  "message": "AI Agent Runtime created successfully"
+  "namespace": "default",
+  "status": {
+    "phase": "Running",
+    "message": "Runtime is running",
+    "last_transition_time": "2023-06-15T12:34:56Z",
+    "pod_status": "Running",
+    "service_status": "Active"
+  },
+  "spec": {
+    "name": "content-agent",
+    "description": "Content generation agent",
+    "entrypoint": "crewai_app/main.py",
+    "code_source": {
+      "type": "git",
+      "git_repo": {
+        "url": "https://github.com/username/content-agent",
+        "branch": "main"
+      }
+    },
+    "replicas": 1
+  }
 }
 ```
+
+Note: The `url` field will only be present in the response if `RUNTIME_INGRESS_DOMAIN` is configured. Otherwise, you can access the runtime using port-forwarding.
 
 #### List All Runtimes
 
 **Endpoint**: `GET /api/runtimes`
 
-Lists all AI Agent Runtimes in the specified namespace.
-
-**Query Parameters**:
-
-- `namespace` (optional): Kubernetes namespace to list runtimes from
+Lists all AI Agent Runtimes in the Management API's namespace.
 
 **Example**:
 
@@ -320,37 +357,69 @@ curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes" \
 **Response**:
 
 ```json
-{
-  "runtimes": [
-    {
-      "name": "content-agent",
-      "status": "running",
-      "url": "https://content-agent.agentic.canary-orion.keboola.dev",
-      "created_at": "2023-06-15T12:34:56Z"
+[
+  {
+    "name": "content-agent",
+    "namespace": "default",
+    "url": "https://content-agent.agentic.canary-orion.keboola.dev",
+    "status": {
+      "phase": "Running",
+      "message": "Runtime is running",
+      "last_transition_time": "2023-06-15T12:34:56Z",
+      "pod_status": "Running",
+      "service_status": "Active"
     },
-    {
-      "name": "research-agent",
-      "status": "running",
-      "url": "https://research-agent.agentic.canary-orion.keboola.dev",
-      "created_at": "2023-06-14T10:22:45Z"
+    "spec": {
+      "name": "content-agent",
+      "description": "Content generation agent",
+      "entrypoint": "crewai_app/main.py",
+      "code_source": {
+        "type": "git",
+        "git_repo": {
+          "url": "https://github.com/username/content-agent",
+          "branch": "main"
+        }
+      },
+      "replicas": 1
     }
-  ]
-}
+  },
+  {
+    "name": "research-agent",
+    "namespace": "default",
+    "url": "https://research-agent.agentic.canary-orion.keboola.dev",
+    "status": {
+      "phase": "Running",
+      "message": "Runtime is running",
+      "last_transition_time": "2023-06-14T10:22:45Z",
+      "pod_status": "Running",
+      "service_status": "Active"
+    },
+    "spec": {
+      "name": "research-agent",
+      "description": "Research assistant agent",
+      "entrypoint": "app.py",
+      "code_source": {
+        "type": "git",
+        "git_repo": {
+          "url": "https://github.com/username/research-agent",
+          "branch": "main"
+        }
+      },
+      "replicas": 1
+    }
+  }
+]
 ```
 
 #### Get Runtime Details
 
 **Endpoint**: `GET /api/runtimes/{name}`
 
-Gets details of a specific AI Agent Runtime.
+Gets details of a specific AI Agent Runtime in the Management API's namespace.
 
 **Path Parameters**:
 
 - `name`: Name of the AI Agent Runtime
-
-**Query Parameters**:
-
-- `namespace` (optional): Kubernetes namespace
 
 **Example**:
 
@@ -364,41 +433,49 @@ curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes/content-agent
 ```json
 {
   "name": "content-agent",
-  "description": "Content generation agent",
+  "namespace": "default",
   "url": "https://content-agent.agentic.canary-orion.keboola.dev",
-  "status": "running",
-  "entrypoint": "crewai_app/main.py",
-  "codeSource": {
-    "type": "git",
-    "gitRepo": {
-      "url": "https://github.com/username/content-agent",
-      "branch": "main"
-    }
+  "status": {
+    "phase": "Running",
+    "message": "Runtime is running",
+    "last_transition_time": "2023-06-15T12:34:56Z",
+    "pod_status": "Running",
+    "service_status": "Active"
   },
-  "envVars": [
-    {
-      "name": "OPENAI_API_KEY",
-      "secure": true
+  "spec": {
+    "name": "content-agent",
+    "description": "Content generation agent",
+    "entrypoint": "crewai_app/main.py",
+    "code_source": {
+      "type": "git",
+      "git_repo": {
+        "url": "https://github.com/username/content-agent",
+        "branch": "main"
+      }
     },
-    {
-      "name": "LOG_LEVEL",
-      "value": "INFO",
-      "secure": false
+    "env_vars": [
+      {
+        "name": "OPENAI_API_KEY",
+        "secure": true
+      },
+      {
+        "name": "LOG_LEVEL",
+        "value": "INFO",
+        "secure": false
+      }
+    ],
+    "replicas": 1,
+    "resources": {
+      "limits": {
+        "cpu": "1",
+        "memory": "1Gi"
+      },
+      "requests": {
+        "cpu": "500m",
+        "memory": "512Mi"
+      }
     }
-  ],
-  "replicas": 1,
-  "resources": {
-    "limits": {
-      "cpu": "1",
-      "memory": "1Gi"
-    },
-    "requests": {
-      "cpu": "500m",
-      "memory": "512Mi"
-    }
-  },
-  "created_at": "2023-06-15T12:34:56Z",
-  "updated_at": "2023-06-15T12:40:22Z"
+  }
 }
 ```
 
@@ -406,15 +483,11 @@ curl -X GET "https://agentic.canary-orion.keboola.dev/api/runtimes/content-agent
 
 **Endpoint**: `DELETE /api/runtimes/{name}`
 
-Deletes a specific AI Agent Runtime.
+Deletes a specific AI Agent Runtime in the Management API's namespace.
 
 **Path Parameters**:
 
 - `name`: Name of the AI Agent Runtime
-
-**Query Parameters**:
-
-- `namespace` (optional): Kubernetes namespace
 
 **Example**:
 
@@ -425,25 +498,17 @@ curl -X DELETE "https://agentic.canary-orion.keboola.dev/api/runtimes/content-ag
 
 **Response**:
 
-```json
-{
-  "message": "AI Agent Runtime 'content-agent' deleted successfully"
-}
-```
+No content (204)
 
 #### Restart Runtime
 
 **Endpoint**: `POST /api/runtimes/{name}/restart`
 
-Restarts a specific AI Agent Runtime.
+Restarts a specific AI Agent Runtime in the Management API's namespace.
 
 **Path Parameters**:
 
 - `name`: Name of the AI Agent Runtime
-
-**Query Parameters**:
-
-- `namespace` (optional): Kubernetes namespace
 
 **Example**:
 
@@ -456,7 +521,29 @@ curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/content-agen
 
 ```json
 {
-  "message": "AI Agent Runtime 'content-agent' restarted successfully"
+  "name": "content-agent",
+  "namespace": "default",
+  "url": "https://content-agent.agentic.canary-orion.keboola.dev",
+  "status": {
+    "phase": "Restarting",
+    "message": "Runtime is restarting",
+    "last_transition_time": "2023-06-15T14:22:33Z",
+    "pod_status": "Terminating",
+    "service_status": "Active"
+  },
+  "spec": {
+    "name": "content-agent",
+    "description": "Content generation agent",
+    "entrypoint": "crewai_app/main.py",
+    "code_source": {
+      "type": "git",
+      "git_repo": {
+        "url": "https://github.com/username/content-agent",
+        "branch": "main"
+      }
+    },
+    "replicas": 1
+  }
 }
 ```
 
@@ -468,19 +555,50 @@ Creates a new AI Agent Runtime using an uploaded code file (ZIP archive) and a r
 
 **Request Parameters**:
 
-- `runtime_config` (form field): JSON file containing the runtime configuration
-- `file` (form file): ZIP archive containing the code files for the agent
+This endpoint accepts runtime configuration in three different formats:
 
-**Example**:
+1. **As a form field (string)**:
+   - `runtime_config` (form field): JSON string containing the runtime configuration
+   - `file` (form file): ZIP archive containing the code files for the agent
+   
+   ```bash
+   curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
+     -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+     -F "runtime_config=$(cat runtime_config.json)" \
+     -F "file=@agent_code.zip"
+   ```
 
-```bash
-curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -F "runtime_config=@runtime_config.json" \
-  -F "file=@agent_code.zip"
-```
+2. **As a separate file upload**:
+   - `runtime_config_file` (form file): JSON file containing the runtime configuration
+   - `file` (form file): ZIP archive containing the code files for the agent
+   
+   ```bash
+   curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
+     -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+     -F "runtime_config_file=@runtime_config.json" \
+     -F "file=@agent_code.zip"
+   ```
 
-Where `runtime_config.json` contains:
+3. **As direct JSON in the request body**:
+   - Body JSON: Runtime configuration as direct JSON in the request body
+   - `file` (form file): ZIP archive containing the code files for the agent
+   
+   ```bash
+   curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
+     -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
+     -H "Content-Type: multipart/form-data" \
+     -F "file=@agent_code.zip" \
+     --data-raw '{
+       "name": "file-upload-runtime",
+       "description": "Runtime created from file upload",
+       "entrypoint": "main.py",
+       "codeSource": {"type": "inline"},
+       "envVars": [{"name": "OPENAI_API_KEY", "value": "sk-...", "secure": true}],
+       "replicas": 1
+     }'
+   ```
+
+**Example Runtime Configuration**:
 
 ```json
 {
@@ -510,11 +628,12 @@ Where `runtime_config.json` contains:
 ```json
 {
   "name": "file-upload-agent",
-  "url": "https://file-upload-agent.agentic.canary-orion.keboola.dev",
   "status": "creating",
   "message": "AI Agent Runtime created successfully from file upload"
 }
 ```
+
+Note: If `RUNTIME_INGRESS_DOMAIN` is configured, the response will also include a `url` field with the full URL to access the runtime.
 
 ### Environment Variables
 
@@ -802,9 +921,66 @@ The Management API can be configured using environment variables:
 
 ### Kubernetes Configuration
 
-- `KUBERNETES_NAMESPACE`: Default namespace for runtime deployments (default: `default`)
+- `DEFAULT_NAMESPACE`: Namespace where the Management API operates and deploys runtimes (default: `default`)
+- `RUNTIME_INGRESS_DOMAIN`: Domain for runtime URLs (optional, only needed when using ingress)
 - `KUBERNETES_CONFIG_PATH`: Path to kubeconfig file (optional)
 - `KUBERNETES_CONTEXT`: Kubernetes context to use (optional)
+
+### Local Development with Ingress
+
+For local development, you can simulate a production-like environment with ingress using Traefik and wildcard DNS services. This gives you a more realistic testing environment without needing to set up complex DNS.
+
+#### Option 1: Using nip.io
+
+[nip.io](https://nip.io/) is a free wildcard DNS service that maps any IP address to a hostname. Format: `<anything>.<IP>.nip.io` resolves to `<IP>`.
+
+1. Install Traefik in your Kubernetes cluster using Helm:
+
+   ```bash
+   helm repo add traefik https://helm.traefik.io/traefik
+   helm install traefik traefik/traefik --set ports.web.exposedPort=80 --set ports.websecure.exposedPort=443
+   ```
+
+2. Configure the Management API with your local IP address:
+
+   ```bash
+   export RUNTIME_INGRESS_DOMAIN="192.168.1.100.nip.io"  # Replace with your actual IP
+   ```
+
+3. Create and access your runtimes:
+
+   ```bash
+   # Your runtime will be available at:
+   http://my-runtime.192.168.1.100.nip.io
+   ```
+
+#### Option 2: Using traefik.me
+
+[traefik.me](https://traefik.me/) is another wildcard DNS service specifically designed for Traefik users. Format: `<anything>.traefik.me` resolves to `127.0.0.1`.
+
+1. Install Traefik as above.
+
+2. Configure the Management API:
+
+   ```bash
+   export RUNTIME_INGRESS_DOMAIN="traefik.me"
+   ```
+
+3. Create and access your runtimes:
+
+   ```bash
+   # Your runtime will be available at:
+   http://my-runtime.traefik.me
+   ```
+
+Benefits of this approach:
+
+- No need to modify `/etc/hosts` files
+- Works with any number of subdomains
+- Enables testing of multi-runtime setups
+- Closely mimics production environment with real domain names
+- Supports testing from other devices on your network (with nip.io)
+- traefik.me even provides wildcard SSL certificates for HTTPS testing
 
 ### Resource Defaults
 
@@ -987,3 +1163,11 @@ These interactive documentation interfaces provide:
 - Request/response schemas
 - Example requests and responses
 - Interactive API testing
+
+## Notes:
+
+- The API operations only affect resources in the Management API's namespace
+- Authentication is required for all endpoints
+- API paths are prefixed with `/api`
+- The API always returns JSON responses with appropriate HTTP status codes
+- The default format for all dates and times is ISO 8601 (e.g., `2023-06-15T12:34:56Z`)

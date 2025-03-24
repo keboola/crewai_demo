@@ -7,6 +7,7 @@
 
 - [Overview](#overview)
 - [Quick Start](#quick-start)
+- [Authentication](#authentication)
 - [API Endpoints](#api-endpoints)
   - [Health Check](#health-check)
   - [Kickoff Endpoint](#kickoff-endpoint)
@@ -46,6 +47,7 @@ Once you've deployed an AI Agent Runtime using the Management API, you can inter
    ```bash
    curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/kickoff" \
      -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
      -d '{
        "crew": "ContentCreationCrew",
        "inputs": {
@@ -56,8 +58,40 @@ Once you've deployed an AI Agent Runtime using the Management API, you can inter
 
 3. **Check job status** (using the job_id from the response):
    ```bash
-   curl "https://content-agent.agentic.canary-orion.keboola.dev/job/987ca65a-62cf-4c48-850b-ad0eb3e37393"
+   curl "https://content-agent.agentic.canary-orion.keboola.dev/job/987ca65a-62cf-4c48-850b-ad0eb3e37393" \
+     -H "Authorization: Bearer YOUR_AUTH_TOKEN"
    ```
+
+## Authentication
+
+The Runtime API uses token-based authentication to secure access to the API endpoints. By default, authentication is enabled for all API endpoints except the health check.
+
+### Making Authenticated Requests
+
+When authentication is enabled, include your token in the Authorization header using the Bearer scheme:
+
+```bash
+curl -H "Authorization: Bearer YOUR_AUTH_TOKEN" https://content-agent.agentic.canary-orion.keboola.dev/endpoint
+```
+
+Replace `YOUR_AUTH_TOKEN` with the authentication token provided to your runtime during deployment. This is the same token used for the Management API.
+
+### Authentication Configuration
+
+Authentication is controlled by environment variables in the runtime:
+
+- `API_AUTH_ENABLED`: Controls whether authentication is required (default: `true`)
+- `API_AUTH_TOKEN`: The token that must be provided with requests
+
+These variables are automatically configured by the platform when runtimes are deployed.
+
+### Endpoints Exempt from Authentication
+
+The following endpoints are accessible without authentication:
+
+- `GET /health`: Health check endpoint
+
+All other endpoints require authentication when it's enabled.
 
 ## API Endpoints
 
@@ -158,7 +192,11 @@ curl "https://content-agent.agentic.canary-orion.keboola.dev/job/987ca65a-62cf-4
   },
   "status": "processing",
   "created_at": "2023-06-15T12:34:56.789Z",
-  "updated_at": "2023-06-15T12:35:12.345Z"
+  "updated_at": "2023-06-15T12:35:12.345Z",
+  "webhook_status_sent": {
+    "processing": true,
+    "completed": false
+  }
 }
 ```
 
@@ -177,6 +215,24 @@ curl "https://content-agent.agentic.canary-orion.keboola.dev/job/987ca65a-62cf-4
   "result": {
     "content": "Artificial Intelligence (AI) refers to...",
     "length": 1234
+  },
+  "webhook_history": [
+    {
+      "webhook_id": "whk_20230615123512_a1b2c3d4",
+      "status": "processing",
+      "sent_at": "2023-06-15T12:35:12.345Z",
+      "url": "https://your-webhook-endpoint.com/webhook"
+    },
+    {
+      "webhook_id": "whk_20230615124057_e5f6g7h8",
+      "status": "completed",
+      "sent_at": "2023-06-15T12:40:57.123Z",
+      "url": "https://your-webhook-endpoint.com/webhook"
+    }
+  ],
+  "webhook_status_sent": {
+    "processing": true,
+    "completed": true
   }
 }
 ```
@@ -400,45 +456,450 @@ curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/kickoff" \
 **Job Created**:
 ```json
 {
-  "event": "job_created",
-  "job_id": "987ca65a-62cf-4c48-850b-ad0eb3e37393",
+  "job_id": "125ce79b-3373-4dd0-be5e-9b49b4391fb5",
   "status": "queued",
   "crew": "ContentCreationCrew",
-  "created_at": "2023-06-15T12:34:56.789Z"
+  "created_at": "2025-03-24T08:34:56.789Z",
+  "meta": {
+    "webhook_sent_at": "2025-03-24T08:34:56.973Z",
+    "webhook_id": "whk_20250324083456_a1b2c3d4",
+    "origin": {
+      "platform": "AI Agent Platform",
+      "runtime_id": "rt_2de04537c9e9",
+      "runtime_name": "content-creation-agent-webhook",
+      "api_url": "https://content-agent.agentic.canary-orion.keboola.dev",
+      "environment": "production",
+      "hostname": "content-creation-agent-webhook-7c8bbb976c-8qptf"
+    },
+    "version": {
+      "platform_version": "0.1.0"
+    },
+    "spec_version": "1.0"
+  },
+  "event": "job_JobStatus.QUEUED"
+}
+```
+
+**Job Processing**:
+```json
+{
+  "job_id": "125ce79b-3373-4dd0-be5e-9b49b4391fb5",
+  "status": "processing",
+  "crew": "ContentCreationCrew",
+  "created_at": "2025-03-24T08:34:56.789Z",
+  "meta": {
+    "webhook_sent_at": "2025-03-24T08:35:12.345Z",
+    "webhook_id": "whk_20250324083512_b2c3d4e5",
+    "origin": {
+      "platform": "AI Agent Platform",
+      "runtime_id": "rt_2de04537c9e9",
+      "runtime_name": "content-creation-agent-webhook",
+      "api_url": "https://content-agent.agentic.canary-orion.keboola.dev",
+      "environment": "production",
+      "hostname": "content-creation-agent-webhook-7c8bbb976c-8qptf"
+    },
+    "version": {
+      "platform_version": "0.1.0"
+    },
+    "spec_version": "1.0"
+  },
+  "event": "job_JobStatus.PROCESSING"
 }
 ```
 
 **Job Completed**:
 ```json
 {
-  "event": "job_completed",
-  "job_id": "987ca65a-62cf-4c48-850b-ad0eb3e37393",
+  "job_id": "125ce79b-3373-4dd0-be5e-9b49b4391fb5",
   "status": "completed",
   "crew": "ContentCreationCrew",
-  "created_at": "2023-06-15T12:34:56.789Z",
-  "completed_at": "2023-06-15T12:40:56.789Z",
+  "completed_at": "2025-03-24T08:38:32.576961",
   "result": {
-    "content": "Artificial Intelligence (AI) refers to...",
-    "length": 1234
-  }
+    "status": "success",
+    "content": "# The Allure of Spring Onions: A Comprehensive Guide\n\n## 1. Introduction\nSpring onions, often referred to as scallions, green onions, or bunching onions...",
+    "length": 5754,
+    "timestamp": "2025-03-24T08:38:32.576877",
+    "feedback_incorporated": false
+  },
+  "meta": {
+    "webhook_sent_at": "2025-03-24T08:38:32.577207",
+    "webhook_id": "whk_20250324083832_5507163c",
+    "origin": {
+      "platform": "AI Agent Platform",
+      "runtime_id": "rt_2de04537c9e9",
+      "runtime_name": "content-creation-agent-webhook",
+      "api_url": "https://content-agent.agentic.canary-orion.keboola.dev",
+      "environment": "production",
+      "hostname": "content-creation-agent-webhook-7c8bbb976c-8qptf"
+    },
+    "version": {
+      "platform_version": "0.1.0"
+    },
+    "spec_version": "1.0"
+  },
+  "event": "job_JobStatus.COMPLETED"
 }
 ```
 
 **Job Pending Approval**:
 ```json
 {
-  "event": "job_pending_approval",
-  "job_id": "987ca65a-62cf-4c48-850b-ad0eb3e37393",
+  "job_id": "125ce79b-3373-4dd0-be5e-9b49b4391fb5",
   "status": "pending_approval",
   "crew": "ContentCreationCrew",
-  "created_at": "2023-06-15T12:34:56.789Z",
-  "updated_at": "2023-06-15T12:38:32.123Z",
+  "created_at": "2025-03-24T08:34:56.789Z",
+  "updated_at": "2025-03-24T08:36:32.123Z",
   "partial_result": {
-    "content": "Artificial Intelligence (AI) refers to...",
-    "awaiting_approval": true
-  }
+    "status": "awaiting_approval",
+    "content": "# The Allure of Spring Onions: A Comprehensive Guide\n\n## 1. Introduction\nSpring onions, often referred to as scallions, green onions, or bunching onions...",
+    "length": 5500,
+    "approval_message": "Please review this article before final publication"
+  },
+  "meta": {
+    "webhook_sent_at": "2025-03-24T08:36:32.345Z",
+    "webhook_id": "whk_20250324083632_c3d4e5f6",
+    "origin": {
+      "platform": "AI Agent Platform",
+      "runtime_id": "rt_2de04537c9e9",
+      "runtime_name": "content-creation-agent-webhook",
+      "api_url": "https://content-agent.agentic.canary-orion.keboola.dev",
+      "environment": "production",
+      "hostname": "content-creation-agent-webhook-7c8bbb976c-8qptf"
+    },
+    "version": {
+      "platform_version": "0.1.0"
+    },
+    "spec_version": "1.0"
+  },
+  "event": "job_JobStatus.PENDING_APPROVAL"
 }
 ```
+
+**Job Error**:
+```json
+{
+  "job_id": "125ce79b-3373-4dd0-be5e-9b49b4391fb5",
+  "status": "error",
+  "crew": "ContentCreationCrew",
+  "created_at": "2025-03-24T08:34:56.789Z",
+  "error_message": "LLM provider returned an error: Rate limit exceeded",
+  "meta": {
+    "webhook_sent_at": "2025-03-24T08:39:12.345Z",
+    "webhook_id": "whk_20250324083912_d4e5f6g7",
+    "origin": {
+      "platform": "AI Agent Platform",
+      "runtime_id": "rt_2de04537c9e9",
+      "runtime_name": "content-creation-agent-webhook",
+      "api_url": "https://content-agent.agentic.canary-orion.keboola.dev",
+      "environment": "production",
+      "hostname": "content-creation-agent-webhook-7c8bbb976c-8qptf"
+    },
+    "version": {
+      "platform_version": "0.1.0"
+    },
+    "spec_version": "1.0"
+  },
+  "event": "job_JobStatus.ERROR"
+}
+```
+
+### Webhook Metadata Fields
+
+Our webhooks include useful metadata to help you manage and troubleshoot your integrations:
+
+- **meta.webhook_sent_at**: Timestamp when the webhook was sent (useful for monitoring delivery times)
+- **meta.webhook_id**: Unique identifier for this specific webhook notification
+  - Useful for deduplication if a webhook is sent multiple times due to retry attempts
+  - Helpful for tracking webhook delivery in your logs
+  - Can be referenced when contacting support about webhook issues
+  - Stored in the job's webhook history for future reference
+- **meta.origin**: Information about the source of the webhook:
+  - **platform**: Always "AI Agent Platform"
+  - **runtime_id**: The unique identifier for the runtime instance that sent the webhook
+    - This is a permanent, stable identifier that persists across restarts
+    - Use this ID when referencing the runtime in API calls to the Management API
+  - **runtime_name**: A human-readable name of the runtime (e.g., "content-creation-agent")
+    - Use this for display purposes in dashboards or logs
+    - Can be configured with the RUNTIME_NAME environment variable
+  - **api_url**: The base URL where the runtime's API is accessible
+    - This is the most critical field for constructing follow-up API calls
+    - Uses the INGRESS_HOST environment variable if set (recommended for production)
+    - Falls back to internal service URL if INGRESS_HOST is not set
+    - Use this to build URLs for job status, feedback, or cancellation requests
+  - **environment**: The deployment environment (production, staging, etc.)
+  - **hostname**: The hostname of the server that sent the webhook (mostly for debugging)
+- **meta.version**: Version information for the platform
+  - **platform_version**: The version of the AI Agent Platform
+    - Important for troubleshooting compatibility issues
+    - Reference this version when reporting bugs or issues
+- **meta.spec_version**: Version of the webhook specification format
+  - Helps you understand the structure of the webhook payload
+  - Will increment if we make breaking changes to the webhook format
+
+For best results, make sure to set the following environment variables in your runtime to ensure accurate webhook metadata:
+- **INGRESS_HOST**: The public hostname where your runtime can be accessed (e.g., "content-agent.agentic.example.com")
+- **RUNTIME_NAME**: A human-readable name for your runtime (e.g., "content-creation-agent")
+- **API_URL**: Only set this if INGRESS_HOST cannot be used
+
+The runtime will store a history of all webhooks sent for each job, which you can access through the job status endpoint. This history includes:
+- Webhook ID
+- Status update that triggered the webhook
+- Timestamp when it was sent
+- Destination URL
+
+### Practical Uses for Webhook Metadata
+
+Here are some common ways to use the webhook metadata in your integration:
+
+1. **Building follow-up API calls**:
+   ```python
+   # When receiving a webhook that a job is pending approval
+   import requests
+   
+   def handle_webhook(webhook_data):
+       # Extract metadata from webhook
+       api_url = webhook_data['meta']['origin']['api_url']
+       job_id = webhook_data['job_id']
+       
+       # Check the event type - note the format "job_JobStatus.XXX"
+       event = webhook_data['event']
+       
+       # Handle different event types
+       if event == 'job_JobStatus.PENDING_APPROVAL':
+           # Construct URL for providing feedback
+           feedback_url = f"{api_url}/job/{job_id}/feedback"
+           
+           # Later, send approval via this URL
+           response = requests.post(
+               feedback_url,
+               json={
+                   "feedback": "Content looks good!",
+                   "approved": True
+               },
+               headers={"Authorization": f"Bearer {YOUR_AUTH_TOKEN}"}
+           )
+           
+           return response.json()
+   ```
+
+2. **Deduplication and idempotency**:
+   ```python
+   # Store processed webhook IDs to avoid duplicate processing
+   processed_webhooks = set()
+   
+   def handle_webhook(webhook_data):
+       webhook_id = webhook_data['meta']['webhook_id']
+       
+       # Skip if already processed
+       if webhook_id in processed_webhooks:
+           print(f"Webhook {webhook_id} already processed, skipping")
+           return
+       
+       # Process the webhook...
+       process_job_update(webhook_data)
+       
+       # Mark as processed
+       processed_webhooks.add(webhook_id)
+       
+       # In a production system, you would persist this to a database
+       # Example with Redis:
+       # import redis
+       # r = redis.Redis()
+       # r.sadd("processed_webhooks", webhook_id)
+   
+   # When checking if a webhook was processed:
+   # was_processed = r.sismember("processed_webhooks", webhook_id)
+   ```
+
+3. **Monitoring and troubleshooting**:
+   ```python
+   import datetime
+   
+   def log_webhook(webhook_data):
+       runtime_name = webhook_data['meta']['origin']['runtime_name']
+       runtime_id = webhook_data['meta']['origin']['runtime_id']
+       event = webhook_data['event']  # Format will be "job_JobStatus.XXX"
+       status = webhook_data['status'] # Direct status field (e.g., "completed")
+       job_id = webhook_data['job_id']
+       sent_at = webhook_data['meta']['webhook_sent_at']
+       platform_version = webhook_data['meta']['version']['platform_version']
+       
+       print(f"Webhook received from {runtime_name} ({runtime_id})")
+       print(f"Event: {event}, Status: {status}, Job: {job_id}")
+       print(f"Sent at: {sent_at}")
+       print(f"Platform version: {platform_version}")
+       
+       # Calculate webhook delivery delay
+       sent_time = datetime.datetime.fromisoformat(sent_at.replace('Z', '+00:00'))
+       received_time = datetime.datetime.now(datetime.timezone.utc)
+       delay_seconds = (received_time - sent_time).total_seconds()
+       print(f"Delivery delay: {delay_seconds:.3f} seconds")
+       
+       # Check for public API URL (should not be internal)
+       api_url = webhook_data['meta']['origin']['api_url']
+       if any(x in api_url for x in ['localhost', '0.0.0.0', '127.0.0.1']):
+           print(f"WARNING: API URL {api_url} appears to be an internal URL")
+   ```
+
+4. **Accessing webhook history**:
+   ```python
+   import requests
+   
+   def get_webhook_history(api_url, job_id, auth_token):
+       """Retrieves the webhook notification history for a job"""
+       job_url = f"{api_url}/job/{job_id}"
+       
+       response = requests.get(
+           job_url,
+           headers={"Authorization": f"Bearer {auth_token}"}
+       )
+       
+       job_data = response.json()
+       
+       # Get webhook history if available
+       webhook_history = job_data.get('webhook_history', [])
+       
+       if webhook_history:
+           print(f"Found {len(webhook_history)} webhook notifications for job {job_id}:")
+           for webhook in webhook_history:
+               print(f"  ID: {webhook['webhook_id']}")
+               print(f"  Status: {webhook['status']}")
+               print(f"  Sent at: {webhook['sent_at']}")
+               print(f"  URL: {webhook['url']}")
+               print()
+       else:
+           print(f"No webhook history found for job {job_id}")
+           
+       return webhook_history
+   ```
+
+5. **Creating a Flask webhook receiver**:
+   ```python
+   from flask import Flask, request, jsonify
+   
+   app = Flask(__name__)
+   
+   @app.route('/webhook', methods=['POST'])
+   def receive_webhook():
+       if not request.json:
+           return jsonify({"error": "Invalid JSON"}), 400
+       
+       webhook_data = request.json
+       
+       # Extract the status from the event string or use the status field
+       event = webhook_data['event']
+       status = webhook_data['status']
+       
+       # Log the webhook
+       print(f"Received webhook: {event} for job {webhook_data['job_id']}")
+       
+       # Store webhook_id for deduplication
+       webhook_id = webhook_data['meta']['webhook_id']
+       print(f"Webhook ID: {webhook_id}")
+       
+       # Process based on status or event type
+       if status == 'completed':
+           # Handle completed job
+           process_completed_job(webhook_data)
+       elif status == 'pending_approval':
+           # Handle job needing approval
+           process_pending_approval(webhook_data)
+       elif status == 'error':
+           # Handle job error
+           process_job_error(webhook_data)
+       
+       return jsonify({"status": "success"}), 200
+   
+   if __name__ == '__main__':
+       app.run(host='0.0.0.0', port=5000)
+   ```
+
+### Testing Webhooks
+
+To help you test webhook functionality, we provide a simple webhook receiver script. You can use this to quickly set up a webhook server for development and testing.
+
+1. **Run the webhook server**:
+
+   From the AI Agent Platform repository:
+   ```bash
+   # From repository root
+   python scripts/tools/webhook_server.py --host 0.0.0.0 --port 8889
+   ```
+
+   Or directly from your code directory:
+   ```bash
+   # Copy the script from the repository or download it
+   wget https://raw.githubusercontent.com/keboola/agentic-platform/main/scripts/tools/webhook_server.py
+   python webhook_server.py --host 0.0.0.0 --port 8889
+   ```
+
+   This will start a webhook receiver on port 8889 and print:
+   ```
+   Starting webhook receiver on http://0.0.0.0:8889
+   Webhook URL: http://0.0.0.0:8889/webhook
+   View received webhooks at: http://0.0.0.0:8889/
+   Clear webhooks at: http://0.0.0.0:8889/clear
+   ```
+
+2. **Make the webhook endpoint accessible**:
+   
+   If you're testing locally, you'll need to use a service like [ngrok](https://ngrok.com/) or [localtunnel](https://github.com/localtunnel/localtunnel) to expose your local server to the internet:
+
+   ```bash
+   # Using ngrok
+   ngrok http 8889
+   
+   # Using localtunnel
+   npx localtunnel --port 8889
+   ```
+
+   This will give you a public URL like `https://1234abcd.ngrok.io` that you can use as your webhook URL.
+
+3. **Configure your job with the webhook URL**:
+
+   ```bash
+   curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/kickoff" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "crew": "ContentCreationCrew",
+       "inputs": {
+         "brain_dump": "Artificial Intelligence"
+       },
+       "webhook_url": "https://1234abcd.ngrok.io/webhook"
+     }'
+   ```
+
+4. **View received webhooks**:
+
+   - In your terminal running the webhook server, you'll see the webhook data printed as it's received
+   - You can also visit `http://localhost:8889/` in your browser to see all received webhooks
+   - Use `http://localhost:8889/latest?count=5` to see the 5 most recent webhooks
+   - Clear all webhooks with `http://localhost:8889/clear`
+
+5. **Understanding webhook server output**:
+
+   When using the included webhook server, you'll notice two types of output for each webhook:
+   
+   ```
+   2025-03-24 09:38:33,759 - webhook_server - INFO - Webhook received: {
+     "job_id": "125ce79b-3373-4dd0-be5e-9b49b4391fb5",
+     "status": "completed",
+     ...
+   }
+   
+   === Webhook Received at 2025-03-24T09:38:33.758891 ===
+   {
+     "job_id": "125ce79b-3373-4dd0-be5e-9b49b4391fb5",
+     "status": "completed",
+     ...
+   }
+   ```
+   
+   The first part is the Python logger output, and the second part (with the `===` header) is from a print statement for console visibility. Both show the same webhook - you're not receiving duplicate webhooks.
+
+   The HTTP status lines (e.g., `INFO: 127.0.0.1:54676 - "POST /webhook HTTP/1.1" 200 OK`) indicate successful HTTP requests being processed.
+
+This webhook server is perfect for development and testing, but for production use, you should implement a more robust webhook receiver with proper error handling, authentication, and persistence.
 
 ## Job States
 
