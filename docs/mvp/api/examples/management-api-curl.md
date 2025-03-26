@@ -241,21 +241,21 @@ curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes" \
   }'
 ```
 
-### 8. Create a Runtime with File Upload
+### 8. Creating a Runtime from File Upload
 
-Create a runtime from a ZIP file containing your code. You can provide the runtime configuration in multiple ways:
+You can also create runtimes by uploading code files directly:
 
 ```bash
-# First, create a runtime configuration JSON file
+# Create a runtime configuration JSON file
 cat > runtime_config.json << EOF
 {
   "name": "file-upload-runtime",
   "description": "Runtime created from file upload",
   "entrypoint": "main.py",
-  "codeSource": {
-    "type": "inline"
+  "code_source": {
+    "type": "file"
   },
-  "envVars": [
+  "env_vars": [
     {"name": "OPENAI_API_KEY", "value": "sk-your-key-here", "secure": true},
     {"name": "DEBUG", "value": "true"}
   ],
@@ -264,34 +264,20 @@ cat > runtime_config.json << EOF
 EOF
 
 # Method 1: Using $(cat) to pass the JSON as a string
-curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
+curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
   -F "runtime_config=$(cat runtime_config.json)" \
-  -F "file=@agent_code.zip"
+  -F "code_file=@agent_code.zip"
 
 # Method 2: Uploading the config as a separate file
-curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
+curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes" \
   -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
   -F "runtime_config_file=@runtime_config.json" \
-  -F "file=@agent_code.zip"
-
-# Method 3: Using direct JSON in the request body
-curl -X POST "https://agentic.canary-orion.keboola.dev/api/runtimes/from-file" \
-  -H "Authorization: Bearer ${API_AUTH_TOKEN}" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@agent_code.zip" \
-  --data-raw '{
-    "name": "file-upload-runtime",
-    "description": "Runtime created from file upload",
-    "entrypoint": "main.py",
-    "codeSource": {"type": "inline"},
-    "envVars": [
-      {"name": "OPENAI_API_KEY", "value": "sk-your-key-here", "secure": true},
-      {"name": "DEBUG", "value": "true"}
-    ],
-    "replicas": 1
-  }'
+  -F "code_file=@agent_code.zip"
 ```
+
+> [!NOTE]
+> The legacy endpoint `POST /api/runtimes/from-file` is still available but deprecated. It works the same way but uses `file` instead of `code_file` as the parameter name.
 
 Response:
 
@@ -313,40 +299,6 @@ After the runtime is created and deployed, you can access the runtime API:
 https://curl-demo-runtime.agentic.canary-orion.keboola.dev
 ```
 
-## API Schema
+For more information on how to use the Runtime API, see the [Runtime API Documentation](../runtime-api.md).
 
-The API expects payloads with the following structure:
-
-### Runtime Creation Request
-
-| Field | Type | Description | Required |
-|-------|------|-------------|----------|
-| `name` | string | Name of the runtime | Yes |
-| `description` | string | Description of the runtime | No |
-| `entrypoint` | string | Entrypoint file for the agent code | Yes |
-| `codeSource` | object | Code source configuration | Yes |
-| `codeSource.type` | string | Type of code source (git, configmap, inline) | Yes |
-| `codeSource.gitRepo` | object | Git repository configuration | No* |
-| `codeSource.gitRepo.url` | string | URL of the Git repository | Yes** |
-| `codeSource.gitRepo.branch` | string | Branch to clone (default: "main") | No |
-| `codeSource.gitRepo.auth` | object | Authentication configuration | No |
-| `envVars` | array | Environment variables for the runtime | No |
-| `envVars[].name` | string | Name of the environment variable | Yes*** |
-| `envVars[].value` | string | Value of the environment variable | No |
-| `envVars[].secure` | boolean | Whether the variable should be stored securely | No |
-| `replicas` | integer | Number of replicas to deploy | No |
-| `resources` | object | Resource limits and requests | No |
-| `dbConfig` | object | Database configuration | No |
-
-\* Required when `codeSource.type` is "git"  
-\** Required when `codeSource.gitRepo` is provided  
-\*** Required for each environment variable object
-
-## Notes:
-
-- The API operations only affect resources in the Management API's namespace
-- Authentication is required for all endpoints
-- API paths are prefixed with `/api`
-- The API always returns JSON responses with appropriate HTTP status codes
-- The default format for all dates and times is ISO 8601 (e.g., `2023-06-15T12:34:56Z`)
-
+Last Updated: March 26, 2025 
