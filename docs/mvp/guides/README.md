@@ -23,7 +23,19 @@ This directory contains various guides to help you use and understand the AI Age
 
 - [Content Creation Example](examples/content-creation-example.md) - Example for content creation
 - [Newsletter Creation Example](examples/convo-newsletter-example.md) - Example for newsletter creation
-- [HITL Workflow Example](examples/hitl-workflow.md) - Example of human-in-the-loop workflow
+- [HITL Workflow Example](examples/hitl-workflow.md) - Comprehensive guide to Human-in-the-Loop functionality
+
+## Human-in-the-Loop (HITL)
+
+The AI Agent Platform provides comprehensive support for CrewAI's Human-in-the-Loop functionality:
+
+- **Seamless Integration**: Simply mark CrewAI tasks with `human_input=True` to enable human interaction
+- **Webhook Notifications**: Get notified when human input is needed through your specified webhook endpoint
+- **Unified API**: Use the `/runs/{run_id}/input` endpoint to provide feedback or approval
+- **Flexible Interaction**: Choose to approve and continue or provide feedback to restart the task
+- **Complete History**: Track all human interactions in the run history
+
+See the [HITL Workflow Example](examples/hitl-workflow.md) for a detailed guide.
 
 ## Integration Guides
 
@@ -36,4 +48,4 @@ This directory contains various guides to help you use and understand the AI Age
 
 ## Troubleshooting
 
-- [Troubleshooting Guide](troubleshooting/README.md) - Diagnose and resolve common issues 
+- [Troubleshooting Guide](troubleshooting/README.md) - Diagnose and resolve common issues

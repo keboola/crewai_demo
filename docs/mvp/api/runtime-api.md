@@ -12,7 +12,6 @@
   - [Health Check](#health-check)
   - [Kickoff Endpoint](#kickoff-endpoint)
   - [Run Status](#run-status)
-  - [Feedback Endpoint](#feedback-endpoint)
   - [List Runs](#list-runs)
   - [List Crews](#list-crews)
   - [Delete Run](#delete-run)
@@ -38,12 +37,14 @@ The AI Agent Runtime API provides a RESTful interface for interacting with your 
 Once you've deployed an AI Agent Runtime using the Management API, you can interact with it through its API:
 
 1. **Find your runtime URL**:
+
    ```bash
    # If your runtime is named "content-agent"
    https://content-agent.agentic.canary-orion.keboola.dev
    ```
 
 2. **Start your first run**:
+
    ```bash
    curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/kickoff" \
      -H "Content-Type: application/json" \
@@ -57,6 +58,7 @@ Once you've deployed an AI Agent Runtime using the Management API, you can inter
    ```
 
 3. **Check run status** (using the run_id from the response):
+
    ```bash
    curl "https://content-agent.agentic.canary-orion.keboola.dev/run/987ca65a-62cf-4c48-850b-ad0eb3e37393" \
      -H "Authorization: Bearer YOUR_AUTH_TOKEN"
@@ -137,6 +139,7 @@ Starts a new agent run.
 ```
 
 **Parameters**:
+
 - `crew` (string, required): The name of the crew class to use
 - `inputs` (object): Input parameters for the crew
 - `webhook_url` (string, optional): URL to receive run status updates
@@ -169,135 +172,70 @@ curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/kickoff" \
 
 ### Run Status
 
-**Endpoint**: `GET /run/{run_id}`
+**Endpoint**: `GET /runs/{run_id}`
 
-Retrieves the status and result of a specific run.
+Retrieves the current status and details of a specific run.
 
-**Path Parameters**:
-- `run_id`: ID of the run to retrieve
+**Path Parameters:**
 
-**Example**:
+- `run_id` (string, required): Unique identifier for the run
 
-```bash
-curl "https://content-agent.agentic.canary-orion.keboola.dev/run/987ca65a-62cf-4c48-850b-ad0eb3e37393" \
-  -H "Authorization: Bearer YOUR_AUTH_TOKEN"
-```
+**Responses:**
 
-**Response (Processing)**:
+- `200 OK`: Run details retrieved successfully
+- `404 Not Found`: Run not found
+- `500 Internal Server Error`: Server error
+
+**Example Response (Run Completed):**
 
 ```json
 {
-  "id": "987ca65a-62cf-4c48-850b-ad0eb3e37393",
-  "crew": "ContentCreationCrew",
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "status": "COMPLETED",
+  "crew": "research-crew",
   "inputs": {
-    "brain_dump": "Artificial Intelligence"
+    "topic": "AI trends"
   },
-  "status": "processing",
-  "created_at": "2023-06-15T12:34:56.789Z",
-  "updated_at": "2023-06-15T12:35:12.345Z",
-  "webhook_status_sent": {
-    "processing": true,
-    "completed": false
-  }
+  "result": {
+    "report": "Detailed report on AI trends...",
+    "summary": "AI is rapidly evolving..."
+  },
+  "created_at": "2023-09-21T15:30:45.123456Z",
+  "started_at": "2023-09-21T15:30:46.123456Z",
+  "completed_at": "2023-09-21T15:35:10.123456Z",
+  "error": null,
+  "webhook_url": "https://example.com/webhook",
+  "hitl_context": null,
+  "hitl_history": [],
+  "webhook_history": []
 }
 ```
 
-**Response (Completed)**:
+**Example Response (Run Pending Human Input):**
 
 ```json
 {
-  "id": "987ca65a-62cf-4c48-850b-ad0eb3e37393",
+  "id": "a8c753f9-00e9-4888-aaf7-762bb10994b5",
+  "status": "PENDING_HUMAN_INPUT", // Run is paused, waiting for input via POST /input
   "crew": "ContentCreationCrew",
-  "inputs": {
-    "brain_dump": "Artificial Intelligence"
+  "inputs": { ... },
+  "result": null, // No final result yet
+  "created_at": "2025-04-03T21:14:23Z",
+  "started_at": "2025-04-03T21:14:23Z",
+  "completed_at": null,
+  "error": null,
+  "webhook_url": "https://webhook-receiver.canary-orion.keboola.dev/webhook",
+  "hitl_context": {
+    "interaction_type": "input",
+    "task_id": "unknown_task", // Task ID might be included if captured
+    "prompt": "<Prompt text shown to user>",
+    "task_output": "<Output of the task that triggered the pause>",
+    "created_at": "2025-04-03T21:14:42Z"
   },
-  "status": "completed",
-  "created_at": "2023-06-15T12:34:56.789Z",
-  "completed_at": "2023-06-15T12:40:56.789Z",
-  "result": {
-    "content": "Artificial Intelligence (AI) refers to...",
-    "length": 1234
-  },
+  "hitl_history": [],
   "webhook_history": [
-    {
-      "webhook_id": "whk_20230615123512_a1b2c3d4",
-      "status": "processing",
-      "sent_at": "2023-06-15T12:35:12.345Z",
-      "url": "https://your-webhook-endpoint.com/webhook"
-    },
-    {
-      "webhook_id": "whk_20230615124057_e5f6g7h8",
-      "status": "completed",
-      "sent_at": "2023-06-15T12:40:57.123Z",
-      "url": "https://your-webhook-endpoint.com/webhook"
-    }
-  ],
-  "webhook_status_sent": {
-    "processing": true,
-    "completed": true
-  }
-}
-```
-
-**Response (Pending Approval)**:
-
-```json
-{
-  "id": "987ca65a-62cf-4c48-850b-ad0eb3e37393",
-  "crew": "ContentCreationCrew",
-  "inputs": {
-    "brain_dump": "Artificial Intelligence",
-    "require_approval": true
-  },
-  "status": "pending_approval",
-  "created_at": "2023-06-15T12:34:56.789Z",
-  "updated_at": "2023-06-15T12:35:12.345Z",
-  "result": {
-    "content": "Artificial Intelligence (AI) refers to...",
-    "length": 1234
-  }
-}
-```
-
-### Feedback Endpoint
-
-**Endpoint**: `POST /run/{run_id}/feedback`
-
-Provides human feedback for a run that's pending approval.
-
-**Path Parameters**:
-- `run_id`: ID of the run to provide feedback for
-
-**Request Body**:
-```json
-{
-  "feedback": "Please make the content more concise and add more examples.",
-  "approved": false
-}
-```
-
-**Parameters**:
-- `feedback` (string): Human feedback on the content
-- `approved` (boolean): Whether to approve the content as is
-
-**Example**:
-
-```bash
-curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/run/987ca65a-62cf-4c48-850b-ad0eb3e37393/feedback" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
-  -d '{
-    "feedback": "Please make the content more concise and add more examples.",
-    "approved": false
-  }'
-```
-
-**Response (Not Approved)**:
-
-```json
-{
-  "message": "Feedback recorded and content generation restarted with feedback",
-  "run_id": "987ca65a-62cf-4c48-850b-ad0eb3e37393"
+    // ... history may include the 'run_human_input_required' webhook send ...
+  ]
 }
 ```
 
@@ -308,8 +246,9 @@ curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/run/987ca65
 Lists all runs with optional filtering.
 
 **Query Parameters**:
+
 - `limit` (integer, optional): Maximum number of runs to return (default: 10, max: 100)
-- `status` (string, optional): Filter runs by status (e.g., "QUEUED", "PROCESSING", "COMPLETED", "ERROR", "PENDING_APPROVAL")
+- `status` (string, optional): Filter runs by status (e.g., "QUEUED", "PROCESSING", "COMPLETED", "ERROR", "PENDING_HUMAN_INPUT")
 
 **Example**:
 
@@ -414,6 +353,7 @@ curl "https://content-agent.agentic.canary-orion.keboola.dev/list-crews" \
 Deletes a run and its associated data.
 
 **Path Parameters**:
+
 - `run_id`: ID of the run to delete
 
 **Example**:
@@ -454,6 +394,7 @@ curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/kickoff" \
 ### Webhook Payload Examples
 
 **Run Created**:
+
 ```json
 {
   "run_id": "125ce79b-3373-4dd0-be5e-9b49b4391fb5",
@@ -485,59 +426,25 @@ For more detailed webhook information, examples, and integration patterns, see t
 
 A run can be in one of the following states:
 
-- **queued**: Run has been created and is waiting to be processed
-- **processing**: Run is currently being processed
-- **pending_approval**: Run is waiting for human approval
-- **completed**: Run has completed successfully
-- **error**: Run encountered an error
-- **cancelled**: Run was cancelled by the user
+- **QUEUED**: The run has been created but not yet started.
+- **PROCESSING**: The run is actively being processed by an agent.
+- **COMPLETED**: The run finished successfully.
+- **ERROR**: The run failed due to an error.
+- **PENDING_HUMAN_INPUT**: The run is paused, waiting for human input via the `POST /runs/{run_id}/input` endpoint.
 
 ## Human-in-the-Loop Workflows
 
-Human-in-the-Loop (HITL) workflows allow for human feedback and approval during the agent execution process. Here's a complete HITL workflow example:
+The platform supports CrewAI's standard Human-in-the-Loop (HITL) functionality using the `human_input=True` parameter on tasks.
 
-1. **Start a run requiring approval**:
-   ```bash
-   curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/kickoff" \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
-     -d '{
-       "crew": "ContentCreationCrew",
-       "inputs": {
-         "brain_dump": "Climate Change",
-         "require_approval": true
-       }
-     }'
-   ```
+1. **Task Pause**: When a CrewAI task with `human_input=True` calls Python's `input()` function, the platform intercepts this.
+2. **Status Update & Webhook**: The run status is changed to `PENDING_HUMAN_INPUT`, context (like the input prompt) is stored, and a webhook notification (`event: run_human_input_required`) is sent to the configured `webhook_url`.
+3. **Provide Input via API**: The user (or an external system) calls `POST /runs/{run_id}/input`.
+    - To **approve/resume** execution without changes (like hitting Enter locally), send `{"approve": true}`. The platform sends an empty string (`""`) back to the paused `input()` call.
+    - To **provide feedback/restart** the task (like typing feedback locally), send `{"approve": false, "feedback": "Your feedback text"}`. The platform sends the feedback string back to the paused `input()` call, and CrewAI handles the task restart internally.
+4. **Resume Execution**: Upon receiving the input via the API, the platform unpauses the agent execution. The run status changes back to `PROCESSING`. An optional webhook (`event: run_human_input_processed`) may be sent.
+5. **Completion/Error**: The run eventually transitions to `COMPLETED` or `ERROR`.
 
-2. **Check run status until it's pending approval**:
-   ```bash
-   curl "https://content-agent.agentic.canary-orion.keboola.dev/run/YOUR_RUN_ID" \
-     -H "Authorization: Bearer YOUR_AUTH_TOKEN"
-   ```
-
-3. **Provide feedback or approve**:
-   ```bash
-   # To approve:
-   curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/run/YOUR_RUN_ID/feedback" \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
-     -d '{
-       "feedback": "Content approved as is.",
-       "approved": true
-     }'
-   
-   # To request changes:
-   curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/run/YOUR_RUN_ID/feedback" \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
-     -d '{
-       "feedback": "Please add more examples about renewable energy.",
-       "approved": false
-     }'
-   ```
-
-4. **If feedback was provided, check status again** until it's "pending_approval" again or "completed", then review the updated content.
+This allows for interactive workflows where human judgment can guide the agent's process.
 
 ## Environment Variables
 
@@ -584,11 +491,13 @@ When deploying your AI Agent Runtime using the Management API, you can configure
 #### 1. Run Stuck in "Processing" State
 
 **Possible causes**:
+
 - The agent is experiencing a long-running operation
 - There might be an issue with the LLM API access
 - The agent code has an error that's not being properly caught
 
 **Solutions**:
+
 - Check the runtime logs through the Management API
 - Verify your API keys and rate limits with the LLM provider
 - Restart the runtime using the Management API
@@ -596,11 +505,13 @@ When deploying your AI Agent Runtime using the Management API, you can configure
 #### 2. Run Returns Error Status
 
 **Possible causes**:
+
 - Invalid inputs provided to the crew
 - Missing environment variables
 - Errors in the agent code
 
 **Solutions**:
+
 - Check the `error_message` field in the run status response
 - Verify all required environment variables are set
 - Check the runtime logs for detailed error information
@@ -646,4 +557,115 @@ For PostgreSQL storage:
 
 For more configuration options, see the [Configuration Guide](../guides/configuration.md).
 
-Last Updated: March 26, 2025 
+Last Updated: March 26, 2025
+
+## Human-in-the-Loop (HITL) Endpoints
+
+### Provide Human Input / Feedback
+
+```
+POST /runs/{run_id}/input
+```
+
+Provides human feedback for a run that is currently in the `PENDING_HUMAN_INPUT` state, typically paused by a CrewAI task with `human_input=True`.
+
+This mimics the behavior of CrewAI's local `input()` function during HITL:
+
+- Sending `approve: true` (with or without an empty `feedback`) resumes the task execution as if the user pressed Enter locally.
+- Sending `approve: false` with a non-empty `feedback` string restarts the task, providing the feedback string to the agent, similar to typing feedback locally.
+
+**Path Parameters:**
+
+- `run_id` (string, required): Unique identifier for the run that is waiting for input.
+
+**Request Body:**
+
+Requires a JSON body with the following fields:
+
+- `approve` (boolean, required):
+  - Set to `true` to approve the current state and resume execution (equivalent to providing empty input locally).
+  - Set to `false` to provide feedback, causing CrewAI to restart the task with the feedback incorporated.
+- `feedback` (string, optional):
+  - The feedback text to provide to the agent.
+  - **Required** if `approve` is `false`.
+  - Ignored if `approve` is `true` (can be omitted, null, or empty string).
+
+**Validation:**
+
+- If `approve` is `false`, the `feedback` field must be present and contain a non-empty string.
+
+**Responses:**
+
+- `200 OK`: Successfully processed the input/feedback. The response body contains the updated `Run` object, likely with status `PROCESSING`.
+- `400 Bad Request`:
+  - Run is not in the `PENDING_HUMAN_INPUT` state.
+  - Validation error (e.g., `approve` is `false` but `feedback` is missing or empty).
+- `404 Not Found`: Run with the specified `run_id` not found.
+- `500 Internal Server Error`: Server error occurred while processing the input.
+
+**Example Request (Approve/Resume):**
+
+```bash
+curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/runs/1f8a44c1-ece9-444a-8457-c6bb9e0c00ff/input" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
+  -d '{
+    "approve": true
+  }'
+```
+
+*Or equivalently:*
+
+```bash
+curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/runs/1f8a44c1-ece9-444a-8457-c6bb9e0c00ff/input" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
+  -d '{
+    "approve": true,
+    "feedback": ""
+  }'
+```
+
+**Example Request (Provide Feedback/Restart Task):**
+
+```bash
+curl -X POST "https://content-agent.agentic.canary-orion.keboola.dev/runs/1f8a44c1-ece9-444a-8457-c6bb9e0c00ff/input" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
+  -d '{
+    "approve": false,
+    "feedback": "The research is missing key details about coffee bean origins."
+  }'
+```
+
+**Example Response (Success):**
+
+```json
+{
+  "id": "1f8a44c1-ece9-444a-8457-c6bb9e0c00ff",
+  "status": "PROCESSING", // Status changed back to PROCESSING
+  "crew": "ConvoNewsletterOpenRouterCrew",
+  "inputs": {
+    "brain_dump": "Coffee Mugs"
+  },
+  "result": null,
+  "created_at": "2025-04-03T21:14:23.123456Z",
+  "started_at": "2025-04-03T21:14:23.567890Z",
+  "completed_at": null,
+  "error": null,
+  "webhook_url": "https://webhook-receiver.canary-orion.keboola.dev/webhook",
+  "hitl_context": null, // Context is cleared after input
+  "hitl_history": [
+    {
+      "prompt": "<Original prompt asking for feedback>",
+      "feedback": "The research is missing key details about coffee bean origins.",
+      "approved": false,
+      "timestamp": "2025-04-03T21:30:15.123456Z"
+    }
+    // Previous interactions would also be listed here
+  ],
+  "webhook_history": [
+    // ... history of webhook sends ...
+  ]
+}
+```

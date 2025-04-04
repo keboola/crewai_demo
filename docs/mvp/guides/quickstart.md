@@ -80,6 +80,51 @@ Once the run is complete, retrieve the results:
 curl "${RUNTIME_URL}/run/RUN_ID/result"
 ```
 
+## Step 5: Working with Human-in-the-Loop (HITL)
+
+If your CrewAI agent includes tasks with `human_input=True`, you'll need to interact with the HITL workflow:
+
+```bash
+# Start a run with a webhook URL to receive HITL notifications
+curl -X POST "${RUNTIME_URL}/kickoff" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "crew": "ContentCreationCrew",
+    "inputs": {
+      "topic": "AI trends"
+    },
+    "webhook_url": "https://your-webhook-endpoint.com/webhook"
+  }'
+```
+
+When a task requires human input, you'll receive a webhook notification with status `PENDING_HUMAN_INPUT`. You can then:
+
+### Check the run status and context
+
+```bash
+# Get run details including the HITL context
+curl "${RUNTIME_URL}/run/RUN_ID"
+```
+
+### Provide input/feedback
+
+```bash
+# To approve and continue (like pressing Enter)
+curl -X POST "${RUNTIME_URL}/runs/RUN_ID/input" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "approve": true
+  }'
+
+# To provide feedback (causing task to restart)
+curl -X POST "${RUNTIME_URL}/runs/RUN_ID/input" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "approve": false,
+    "feedback": "Please add more details about large language models."
+  }'
+```
+
 ## Next Steps
 
 Now that you've deployed and interacted with your first AI agent, you can:
@@ -100,4 +145,4 @@ If you encounter issues:
 
 ---
 
-**Last Updated:** March 24, 2024 
+**Last Updated:** March 24, 2024
